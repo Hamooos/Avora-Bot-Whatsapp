@@ -1,0 +1,12 @@
+{
+  "id": "23-off-topic",
+  "topic": "לא קשור",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "מה מזג האוויר מחר בתל אביב?",
+      "bot": "כאן אפשר לעזור רק בשאלות על אבורה+ ועל הזמנות 🙂 אם יש שאלה על המכשיר, נשמח לעזור.",
+      "handoff": null
+    }
+  ]
+}

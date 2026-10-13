@@ -1,0 +1,12 @@
+{
+  "id": "18-return-refund",
+  "topic": "החזרה / החזר כספי (בלי לשכנע להישאר)",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "השתמשתי שבועיים ולא הרגשתי הבדל. איך מחזירים?",
+      "bot": "מצטערים שזה לא עזר. יש 30 ימי ניסיון - אם לא הרגשת הבדל, מקבלים את הכסף בחזרה לפי מדיניות ההחזרים באתר.\nהעברתי את הבקשה לצוות שלנו, והם יחזרו אליך עם כל הפרטים.",
+      "handoff": "cancel_refund"
+    }
+  ]
+}

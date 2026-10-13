@@ -1,0 +1,12 @@
+{
+  "id": "19-cancel-order",
+  "topic": "ביטול הזמנה",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "הזמנתי אתמול ואני רוצה לבטל את ההזמנה",
+      "bot": "אין בעיה 🙏 העברתי את בקשת הביטול לצוות שלנו, והם יחזרו אליך בהקדם כדי לסדר את זה.",
+      "handoff": "cancel_refund"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "20-order-status",
+  "topic": "סטטוס הזמנה - נמצאה",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "מה קורה עם ההזמנה שלי? מספר 1042",
+      "bot": "בדקתי - הזמנה #1042 נשלחה והיא בדרך 📦\nמספר מעקב: RR123456789IL\nhttps://example.com/track/RR123456789IL",
+      "handoff": null,
+      "tool": {
+        "name": "lookup_order",
+        "input": {
+          "order_number": "1042"
+        },
+        "result": {
+          "found": true,
+          "order_name": "#1042",
+          "status_he": "ההזמנה נשלחה והיא בדרך.",
+          "payment_pending": false,
+          "tracking": [
+            {
+              "company": "Israel Post",
+              "number": "RR123456789IL",
+              "url": "https://example.com/track/RR123456789IL"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

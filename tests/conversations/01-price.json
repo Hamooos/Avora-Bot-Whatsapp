@@ -1,0 +1,12 @@
+{
+  "id": "01-price",
+  "topic": "מחיר",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "היי, כמה זה עולה?",
+      "bot": "מכשיר אחד עולה 189 ₪, והמשלוח חינם לכל הארץ.\nיש גם זוג ב-315 ₪ (עם מדריך דיגיטלי במתנה) ושלושה ב-439 ₪.",
+      "handoff": null
+    }
+  ]
+}

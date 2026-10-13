@@ -1,0 +1,12 @@
+{
+  "id": "26-human-request",
+  "topic": "בקשה לנציג",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "אפשר לדבר עם נציג אנושי?",
+      "bot": "בטח 🙏 העברתי את הפנייה לצוות שלנו, ומישהו יחזור אליך כאן בהקדם.",
+      "handoff": "human_request"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "10-kids",
+  "topic": "ילדים",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "אפשר לתת את זה לבן שלי? הוא בן 8",
+      "bot": "המכשיר מיועד למבוגרים. לשימוש אצל ילדים - רק אחרי התייעצות עם רופא.\nהעברתי את השאלה לצוות שלנו, ונחזור אליך בהקדם.",
+      "handoff": "medical"
+    }
+  ]
+}

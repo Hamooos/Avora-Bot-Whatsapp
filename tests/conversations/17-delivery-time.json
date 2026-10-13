@@ -1,0 +1,12 @@
+{
+  "id": "17-delivery-time",
+  "topic": "זמן משלוח (לא ידוע - העברה לנציג)",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "תוך כמה זמן זה מגיע אחרי שמזמינים?",
+      "bot": "שאלה טובה - את זמני המשלוח המדויקים אבדוק ואחזור אליך בהקדם 🙏",
+      "handoff": "unknown_info"
+    }
+  ]
+}

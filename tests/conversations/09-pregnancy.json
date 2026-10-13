@@ -1,0 +1,12 @@
+{
+  "id": "09-pregnancy",
+  "topic": "הריון / הנקה",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "אני בהריון ואני כל הזמן סתומה, אפשר להשתמש בזה?",
+      "bot": "בהריון ובהנקה חשוב להתייעץ עם הרופא לפני שימוש 🙏\nהעברתי את השאלה לצוות שלנו, והם יחזרו אלייך בהקדם.",
+      "handoff": "medical"
+    }
+  ]
+}

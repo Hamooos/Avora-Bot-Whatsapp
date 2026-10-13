@@ -1,0 +1,17 @@
+{
+  "id": "16-shipping",
+  "topic": "משלוח",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "כמה עולה המשלוח? זה מגיע עד הבית?",
+      "bot": "המשלוח חינם לכל הארץ, אבל הוא לא מגיע עד הדלת.",
+      "handoff": null
+    },
+    {
+      "customer": "אז לאן זה מגיע בדיוק?",
+      "bot": "את הפרטים המדויקים על שיטת המשלוח אבדוק ואחזור אליך בהקדם 🙏",
+      "handoff": "unknown_info"
+    }
+  ]
+}

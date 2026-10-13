@@ -1,0 +1,17 @@
+{
+  "id": "06-pain-comfort",
+  "topic": "כאב / נוחות",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "זה כואב? יש לי אף רגיש",
+      "bot": "הקצוות עשויים סיליקון רך ונכנסים רק לפתח הנחיריים.\nלמי שהאף שלו רגיש יש מצב עדין, ומצב הדרגתי שבו העוצמה עולה לאט.",
+      "handoff": null
+    },
+    {
+      "customer": "זה מחמם או שורף?",
+      "bot": "זה אור אדום, לא לייזר ולא חום. רוב האנשים פשוט רואים אור אדום ולא מרגישים כלום מיוחד.",
+      "handoff": null
+    }
+  ]
+}

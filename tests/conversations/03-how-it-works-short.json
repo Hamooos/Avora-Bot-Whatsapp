@@ -1,0 +1,12 @@
+{
+  "id": "03-how-it-works-short",
+  "topic": "איך זה עובד - קצר",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "מה זה בעצם?",
+      "bot": "זה מכשיר קטן שמאיר אור אדום לתוך האף, 10 דקות ביום.\nהאור עוזר לרירית הנפוחה באף להירגע בהדרגה - בלי שום חומר ובלי שום דבר שמתמכרים אליו.",
+      "handoff": null
+    }
+  ]
+}

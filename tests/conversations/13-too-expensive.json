@@ -1,0 +1,12 @@
+{
+  "id": "13-too-expensive",
+  "topic": "יקר מדי",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "189 שקל? זה יקר לי",
+      "bot": "מבינים לגמרי. בואו נשים את זה בפרופורציה: בקבוק ספריי או חבילת כדורים כל חודש, כל שנה.\nאבורה+ זה תשלום אחד של 189 ₪, בלי מילוי ובלי מנוי. ואם לא הרגשתם הבדל, יש 30 יום ומקבלים את הכסף בחזרה, לפי מדיניות ההחזרים באתר.",
+      "handoff": null
+    }
+  ]
+}

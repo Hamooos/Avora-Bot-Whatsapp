@@ -1,0 +1,26 @@
+{
+  "id": "21-order-status-not-found",
+  "topic": "סטטוס הזמנה - בלי מספר / לא נמצאה",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "איפה החבילה שלי??",
+      "bot": "נבדוק 🙂 מה מספר ההזמנה?",
+      "handoff": null
+    },
+    {
+      "customer": "1050",
+      "bot": "לא מצאנו הזמנה עם המספר הזה והטלפון שממנו כתבת.\nאפשר לבדוק שוב את מספר ההזמנה, או לכתוב את מספר הטלפון שמופיע בהזמנה?",
+      "handoff": null,
+      "tool": {
+        "name": "lookup_order",
+        "input": {
+          "order_number": "1050"
+        },
+        "result": {
+          "found": false
+        }
+      }
+    }
+  ]
+}

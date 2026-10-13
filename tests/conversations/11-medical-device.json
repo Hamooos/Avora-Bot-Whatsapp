@@ -1,0 +1,12 @@
+{
+  "id": "11-medical-device",
+  "topic": "האם זה מכשיר רפואי / אישורים",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "זה מכשיר רפואי? יש לזה אישור של משרד הבריאות?",
+      "bot": "אבורה+ הוא מכשיר לשימוש ביתי (Wellness) ולא מכשיר רפואי או תרופה. הוא נועד לתמוך באף רגוע יותר, לא לאבחן או לטפל במחלה.\nלגבי אישורים - אבדוק ואחזור אליך.",
+      "handoff": "unknown_info"
+    }
+  ]
+}

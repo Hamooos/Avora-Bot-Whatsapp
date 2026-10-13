@@ -1,0 +1,12 @@
+{
+  "id": "22-angry-customer",
+  "topic": "לקוח כועס",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "אתם נוכלים!!! שילמתי ולא קיבלתי כלום",
+      "bot": "מבינים את התסכול, ומצטערים על זה.\nהעברתי את הפנייה לצוות שלנו, והם יחזרו אליך בהקדם כדי לבדוק מה קרה. אם יש לך מספר הזמנה, אפשר לשלוח אותו כאן.",
+      "handoff": "complaint"
+    }
+  ]
+}

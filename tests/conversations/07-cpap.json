@@ -1,0 +1,17 @@
+{
+  "id": "07-cpap",
+  "topic": "CPAP / דום נשימה",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "בעלי עם CPAP ולא מצליח לישון עם המסכה כי האף סתום. זה יעזור לו?",
+      "bot": "הרבה פעמים הבעיה היא לא המסכה, אלא האף שמאחוריה. אבורה+ תומך באף רגוע יותר, ויש אנשים שמרגישים שכך קל להם יותר עם המסכה.\nחשוב: אבורה+ לא מטפל בדום נשימה ולא מחליף את מכשיר ה-CPAP - ממשיכים להשתמש במכשיר לפי הנחיות הרופא.",
+      "handoff": null
+    },
+    {
+      "customer": "אז אולי הוא יוכל להפסיק עם ה-CPAP?",
+      "bot": "לא, אבורה+ לא מחליף את ה-CPAP.\nממשיכים להשתמש במכשיר לפי הנחיות הרופא, וכל שינוי רק עם הרופא שלו.",
+      "handoff": null
+    }
+  ]
+}

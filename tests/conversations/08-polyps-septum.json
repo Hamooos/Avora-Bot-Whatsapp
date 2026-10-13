@@ -1,0 +1,12 @@
+{
+  "id": "08-polyps-septum",
+  "topic": "פוליפים / סטייה במחיצה",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "יש לי סטייה במחיצה, זה יעזור לי?",
+      "bot": "בכנות - אם הסתימה נובעת בעיקר מבעיה מבנית, כמו פוליפים או סטייה קשה במחיצה, ייתכן שתרגישו שיפור חלקי בלבד, כי אבורה+ לא משנה את המבנה של האף.\nאם יש גם נפיחות של הרירית, הוא יכול לעזור בחלק הזה. כדאי להתייעץ עם רופא.",
+      "handoff": null
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "14-gimmick",
+  "topic": "גימיק?",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "נשמע כמו עוד גימיק מהאינטרנט",
+      "bot": "טוב שאתם חושדים 🙂 זה לא משהו שהמצאנו: אור אדום באף נבדק במחקרים משנות ה-90, אחד מהם בבית החולים השרון בפתח תקווה.\nואנחנו לא מבקשים שתאמינו לנו - נסו 30 יום, ואם זה לא עשה כלום, מקבלים את הכסף בחזרה.",
+      "handoff": null
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+node_modules
+.env
+.env.*
+.git
+tests
+scripts
+*.md
+!docs/*.md

@@ -1,0 +1,206 @@
+'use strict';
+
+const { normalizePhone, samePhone } = require('./phone');
+const { checkReply } = require('./compliance');
+const { CATEGORY_LABELS } = require('./handoff');
+
+const NON_TEXT_REPLY = 'תודה! כרגע אפשר לענות כאן רק על הודעות כתובות - אפשר לכתוב לנו במילים במה מדובר?';
+const IGNORED_TYPES = new Set(['reaction', 'system', 'ephemeral', 'request_welcome']);
+const PAUSE_MS = 12 * 60 * 60 * 1000;
+const UNKNOWN_PHRASE = /אבדוק ואחזור/;
+
+// Deterministic detectors. They don't write the reply - they make sure the owner is
+// notified even if the model forgets, and they tell the model what was detected.
+const NB = '(?<![\\u05D0-\\u05EA])';
+const NA = '(?![\\u05D0-\\u05EA])';
+const DETECTORS = [
+  {
+    category: 'medical',
+    note: 'זוהה דגל אדום רפואי. ענו שקודם כדאי שרופא יבדוק את זה, בלי אבחנה ובלי עצה רפואית, ותגידו שהצוות יחזור אליהם. קראו ל-handoff_to_human.',
+    patterns: [
+      /(?:יש\s+לי|יש\s+לו|יש\s+לה|עם|קיבלתי|קיבל|קיבלה)\s+(?:גם\s+)?חום|חום\s+גבוה|קדחת/,
+      /כאב(?:ים)?\s+(?:\S+\s+)?(?:חזק|חזקים|עז|עזים|נוראי|נוראיים)|כואב(?:ת)?\s+לי\s+(?:מאוד|נורא)/,
+      /הפרש(?:ה|ות)\s+(?:\S+\s+)?(?:צבעונית|צבעוניות|ירוקה|ירוקות|צהובה|צהובות|דמית|עם\s+דם)|נזלת\s+(?:ירוקה|צהובה|עם\s+דם)/,
+      /דימום|מדמם|מדממת|דם\s+(?:מה|ב)אף/,
+      /הפסקות\s+נשימה|מפסיק(?:ה|ים)?\s+לנשום|עוצר(?:ת)?\s+(?:את\s+)?(?:ה)?נשימה/,
+      /(?:צד|נחיר)\s+אחד\s+(?:בלבד\s+|רק\s+)?(?:סתום|נסתם|חסום)|סתום\s+(?:רק\s+)?(?:ב|מ)צד\s+אחד/,
+      new RegExp(`${NB}(?:[לוהש]{0,2})(?:ילד|ילדה|ילדים|ילדות|תינוק|תינוקת|פעוט|פעוטה)${NA}|(?:הבן|הבת|לבן|לבת)\\s+שלי|${NB}(?:בן|בת)\\s+(?:[1-9]|1[0-7])(?!\\d)`),
+      /הריון|היריון|בהריון|בהיריון|מניקה|הנקה|מיניקה/,
+    ],
+  },
+  {
+    category: 'human_request',
+    note: 'הלקוח ביקש לדבר עם אדם. תגידו שהצוות יחזור אליו בהקדם, וקראו ל-handoff_to_human.',
+    patterns: [/נציג|נציגה|בן\s+אדם|בנאדם|אדם\s+אמיתי|מישהו\s+אמיתי|לדבר\s+עם\s+מישהו|מנהל|תתקשרו|שיחזרו\s+אלי|לדבר\s+בטלפון|שיחה\s+טלפונית/],
+  },
+  {
+    category: 'cancel_refund',
+    note: 'הלקוח מבקש ביטול / החזרה / החזר. ענו בכנות ובלי לנסות לשכנע אותו לוותר: יש 30 ימי ניסיון ומקבלים את הכסף בחזרה לפי מדיניות ההחזרים באתר, והצוות יחזור אליו כדי לטפל בזה. קראו ל-handoff_to_human.',
+    patterns: [
+      /(?:רוצה|רוצים|ברצוני|מבקש|מבקשת|אפשר|איך|אני|נא)\s+(?:\S+\s+)?(?:לבטל|להחזיר|ביטול|החזר|החזרה|זיכוי)/,
+      /לבטל\s+את\s+(?:ה)?הזמנה|ביטול\s+(?:ה)?הזמנה|להחזיר\s+את\s+(?:ה)?מכשיר|איך\s+מחזירים|תהליך\s+(?:ה)?החזרה|מחזיר(?:ה)?\s+את\s+(?:ה)?מכשיר/,
+    ],
+  },
+  {
+    category: 'complaint',
+    note: 'זוהתה תלונה / תקלה / לקוח כועס. הביעו הבנה בקצרה, בלי להתווכח, ותגידו שהצוות יחזור אליו. קראו ל-handoff_to_human.',
+    patterns: [
+      /תלונה|להתלונן|נוכלים|רמאים|גנבים|עוקץ|הונאה|בושה|זבל|חרא|מזעזע|שערורי|עורך\s+דין|עו"ד|תביעה|לתבוע|משטרה|הגנת\s+הצרכן/,
+      /(?:המכשיר|הוא|זה)\s+(?:\S+\s+)?(?:לא\s+נדלק|לא\s+נטען|לא\s+עובד|התקלקל|נשבר|שבור|מקולקל)|הגיע\s+(?:שבור|פגום)|פגום/,
+    ],
+  },
+];
+
+function detect(text) {
+  const t = String(text || '');
+  return DETECTORS.filter((d) => d.patterns.some((p) => p.test(t))).map((d) => ({ category: d.category, note: d.note }));
+}
+
+function createRateLimiter({ limit, windowMs, now = () => Date.now() }) {
+  const hits = new Map();
+  return function allow(key) {
+    const t = now();
+    const list = (hits.get(key) || []).filter((x) => t - x < windowMs);
+    if (list.length >= limit) { hits.set(key, list); return false; }
+    list.push(t);
+    hits.set(key, list);
+    return true;
+  };
+}
+
+const OWNER_HELP = [
+  'פקודות מנהל:',
+  'SEND 0501234567 טקסט - לשלוח ללקוח (הבוט מושתק ללקוח הזה ל-12 שעות)',
+  'PAUSE 0501234567 / RESUME 0501234567 - להשתיק / להחזיר את הבוט ללקוח',
+  'BLOCK 0501234567 / UNBLOCK 0501234567 - לחסום / לבטל חסימה',
+].join('\n');
+
+function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, logger, now = () => Date.now(), rateLimit }) {
+  const log = logger || { info() {}, warn() {}, error() {} };
+  const seen = new Map(); // message id -> ts (Meta can deliver the same webhook more than once)
+  const blocked = new Set();
+  const queues = new Map(); // phone -> promise chain (one message at a time per customer)
+  const allow = rateLimit || createRateLimiter({ limit: 15, windowMs: 10 * 60 * 1000, now });
+
+  function isDuplicate(id) {
+    if (!id) return false;
+    const t = now();
+    for (const [k, ts] of seen) if (t - ts > 24 * 60 * 60 * 1000) seen.delete(k);
+    if (seen.has(id)) return true;
+    seen.set(id, t);
+    return false;
+  }
+
+  async function send(to, text) {
+    return whatsapp.sendText(to, text);
+  }
+
+  async function handleOwnerCommand(msg) {
+    const m = /^\s*(BLOCK|UNBLOCK|PAUSE|RESUME|SEND|HELP)\b\s*(\+?\d[\d-]{6,18}\d)?\s*([\s\S]*)$/i.exec(msg.text || '');
+    if (!m || m[1].toUpperCase() === 'HELP') {
+      await send(msg.from, OWNER_HELP);
+      return { action: 'owner_help' };
+    }
+    const cmd = m[1].toUpperCase();
+    const target = normalizePhone(m[2] || '');
+    if (!target) {
+      await send(msg.from, OWNER_HELP);
+      return { action: 'owner_help' };
+    }
+    switch (cmd) {
+      case 'BLOCK': blocked.add(target); break;
+      case 'UNBLOCK': blocked.delete(target); break;
+      case 'PAUSE': await store.setMeta(target, { pausedUntil: now() + PAUSE_MS }); break;
+      case 'RESUME': await store.setMeta(target, { pausedUntil: 0 }); break;
+      case 'SEND': {
+        const body = (m[3] || '').trim();
+        if (!body) { await send(msg.from, OWNER_HELP); return { action: 'owner_help' }; }
+        const res = await send(target, body);
+        await store.append(target, [{ role: 'user', content: '[הודעה מהצוות נשלחה ללקוח]' }, { role: 'assistant', content: body }]);
+        await store.setMeta(target, { pausedUntil: now() + PAUSE_MS });
+        if (!res.ok) await send(msg.from, 'השליחה נכשלה (ייתכן שעברו 24 שעות מההודעה האחרונה של הלקוח).');
+        break;
+      }
+      default: break;
+    }
+    log.info('owner_command', { command: cmd, phone: target });
+    await send(msg.from, `בוצע: ${cmd} ${target}`);
+    return { action: `owner_${cmd.toLowerCase()}`, target };
+  }
+
+  async function processCustomerMessage(msg) {
+    const phone = msg.from;
+    const meta = await store.getMeta(phone);
+
+    if (meta.pausedUntil && meta.pausedUntil > now()) {
+      // A human is handling this conversation - forward to the owner, don't answer.
+      if (ownerNumber && msg.text) await send(ownerNumber, `💬 +${phone}: ${msg.text}`);
+      return { action: 'forwarded_to_owner' };
+    }
+
+    if (!msg.text) {
+      await send(phone, NON_TEXT_REPLY);
+      return { action: 'non_text_reply', reply: NON_TEXT_REPLY };
+    }
+
+    const detected = detect(msg.text);
+    const result = await agent.respond({ phone, text: msg.text, notes: detected.map((d) => d.note) });
+
+    // Collect hand-offs: from the model, from the router, and from "אבדוק ואחזור" replies.
+    const handoffs = [...result.handoffs];
+    for (const d of detected) {
+      if (!handoffs.some((h) => h.category === d.category)) {
+        handoffs.push({ category: d.category, summary: `זוהה אוטומטית: ${CATEGORY_LABELS[d.category]}` });
+      }
+    }
+    if (!handoffs.length && UNKNOWN_PHRASE.test(result.reply)) {
+      handoffs.push({ category: 'unknown_info', summary: 'הבוט ענה "אבדוק ואחזור" - נדרשת תשובה מהצוות' });
+    }
+
+    // Last line of defense - agent output is already checked, but never send a non-compliant reply.
+    let reply = result.reply;
+    if (!checkReply(reply).ok) {
+      log.error('reply_blocked_by_compliance', { phone });
+      reply = 'תודה על ההודעה 🙏 אבדוק ואחזור אליך בהקדם.';
+      if (!handoffs.length) handoffs.push({ category: 'other', summary: 'תשובת הבוט נחסמה בבדיקת תאימות' });
+    }
+
+    await send(phone, reply);
+    for (const h of handoffs) {
+      // The owner gets the customer's last message with the summary, so they have context.
+      const summary = [h.summary, `ההודעה האחרונה: "${msg.text.slice(0, 300)}"`].filter(Boolean).join('\n');
+      await handoff.notify({ phone, category: h.category, summary, customerName: msg.name });
+    }
+    log.info('message_handled', { phone, handoffs: handoffs.map((h) => h.category).join(',') || 'none', fallback: result.fallback });
+    return { action: 'replied', reply, handoffs, detected: detected.map((d) => d.category) };
+  }
+
+  async function handle(msg) {
+    if (!msg || !msg.from) return { action: 'ignored' };
+    if (isDuplicate(msg.id)) return { action: 'duplicate' };
+    if (IGNORED_TYPES.has(msg.type)) return { action: 'ignored' };
+    log.info('message_received', { phone: msg.from, type: msg.type, text: msg.text });
+
+    if (ownerNumber && samePhone(msg.from, ownerNumber)) return handleOwnerCommand(msg);
+    if (blocked.has(normalizePhone(msg.from))) return { action: 'blocked' };
+    if (!allow(msg.from)) {
+      log.warn('rate_limited', { phone: msg.from });
+      return { action: 'rate_limited' };
+    }
+    if (msg.id && whatsapp.markRead) whatsapp.markRead(msg.id).catch(() => {});
+
+    // Serialize per customer so history stays consistent when messages arrive in bursts.
+    const prev = queues.get(msg.from) || Promise.resolve();
+    const run = prev.then(() => processCustomerMessage(msg)).catch((err) => {
+      log.error('handle_error', { phone: msg.from, error: err?.message });
+      return { action: 'error' };
+    });
+    queues.set(msg.from, run);
+    run.finally(() => { if (queues.get(msg.from) === run) queues.delete(msg.from); });
+    return run;
+  }
+
+  return { handle, blocked };
+}
+
+module.exports = { createMessageHandler, createRateLimiter, detect, NON_TEXT_REPLY, OWNER_HELP };

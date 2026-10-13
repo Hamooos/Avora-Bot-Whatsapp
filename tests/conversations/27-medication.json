@@ -1,0 +1,12 @@
+{
+  "id": "27-medication",
+  "topic": "להמשיך עם תרופות",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "אני לוקח כדורים לאלרגיה, אפשר להמשיך איתם?",
+      "bot": "אבורה+ לא מחליף טיפול שקיבלת מרופא.\nאל תפסיק ואל תשנה שום תרופה או טיפול בלי להתייעץ עם הרופא שלך.",
+      "handoff": null
+    }
+  ]
+}

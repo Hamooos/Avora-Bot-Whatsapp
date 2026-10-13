@@ -1,0 +1,17 @@
+{
+  "id": "24-results-timeline",
+  "topic": "תוך כמה זמן מרגישים",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "תוך כמה זמן מרגישים שיפור?",
+      "bot": "זה לא קורה בלילה אחד. הרבה אנשים מתחילים לשים לב לשינויים הראשונים אחרי שבוע-שבועיים של 10 דקות ביום, ויותר לאורך החודש.\nאצל כל אחד הקצב שונה - ובשביל זה יש 30 ימי ניסיון.",
+      "handoff": null
+    },
+    {
+      "customer": "זה בטוח יעבוד אצלי?",
+      "bot": "אנחנו לא יכולים להבטיח תוצאה לאף אחד.\nמה שכן: אור אדום באף נבדק במחקרים, הרבה אנשים מרגישים הקלה, ויש 30 יום לבדוק בעצמכם בלי סיכון.",
+      "handoff": null
+    }
+  ]
+}

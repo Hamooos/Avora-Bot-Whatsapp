@@ -1,0 +1,22 @@
+{
+  "id": "05-usage",
+  "topic": "שימוש",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "איך משתמשים בזה?",
+      "bot": "מכניסים את שני הקצוות הרכים לפתח הנחיריים, הגוף נח מעל השפה העליונה, ולוחצים על הכפתור.\nאחרי 10 דקות הוא נכבה לבד. הידיים חופשיות - אפשר לראות טלוויזיה, לקרוא או לנוח.",
+      "handoff": null
+    },
+    {
+      "customer": "כמה פעמים ביום?",
+      "bot": "פעם ביום, 10 דקות. העיקר לעשות את זה כל יום - הרבה אנשים מעדיפים בערב או לפני השינה.",
+      "handoff": null
+    },
+    {
+      "customer": "ואיך מטעינים?",
+      "bot": "טוענים בכבל ה-USB שבערכה. טעינה מלאה לוקחת כ-10-15 דקות ומחזיקה עד כשבוע בשימוש של 10 דקות ביום.",
+      "handoff": null
+    }
+  ]
+}

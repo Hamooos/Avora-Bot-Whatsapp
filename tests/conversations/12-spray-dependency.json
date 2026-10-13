@@ -1,0 +1,12 @@
+{
+  "id": "12-spray-dependency",
+  "topic": "תלות בספריי",
+  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "turns": [
+    {
+      "customer": "אני מכור לאוטריווין כבר 5 שנים. עם המכשיר אוכל להפסיק את הספריי?",
+      "bot": "הרבה אנשים שפונים אלינו מרססים כבר שנים - ממש לא לבד בזה.\nאבורה+ עובד בלי חומר ובלי אפקט חזרתי, ועוזר לאף להירגע לבד. הוא לא מחליף שום דבר בבת אחת - מוסיפים אותו לשגרה.\nכל שינוי בספריי עצמו - רק עם הרופא או הרוקח.",
+      "handoff": null
+    }
+  ]
+}
