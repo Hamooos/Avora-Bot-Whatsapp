@@ -66,3 +66,10 @@ test('format: paragraphs separated by an empty line, 1-3 emojis, warm acknowledg
   const example = RULES.split('מעיין: "')[1].split('"\n(Never')[0];
   assert.ok(checkReply(example).ok, JSON.stringify(checkReply(example)));
 });
+
+test('disclaimers only when the customer touches the topic (owner 2026-10-13)', () => {
+  assert.match(RULES, /Disclaimers only when relevant/);
+  assert.match(RULES, /do NOT volunteer that Avora\+ is a wellness device/);
+  // The CPAP rule itself stays: when CPAP comes up, the line is still required.
+  assert.match(RULES, /CPAP \/ sleep apnea: always say Avora\+ does NOT treat sleep apnea/);
+});
