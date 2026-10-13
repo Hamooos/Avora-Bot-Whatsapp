@@ -70,6 +70,7 @@ npm run dev               # שרת על http://localhost:3000
 | `CLAUDE_MODEL` | ברירת מחדל `claude-sonnet-5-5` |
 | `SHOPIFY_STORE` | `avora-il.myshopify.com` |
 | `SHOPIFY_ACCESS_TOKEN` | טוקן Admin API עם `read_orders` בלבד |
+| `SHOPIFY_CLIENT_ID` + `SHOPIFY_CLIENT_SECRET` | אפליקציות חדשות מה-Dev Dashboard (מ-2026 אין טוקן קבוע): הבוט מקבל טוקן זמני ב-client credentials ומחדש אותו לבד. משאירים את `SHOPIFY_ACCESS_TOKEN` ריק |
 | `PORT` | ריילווי מגדיר לבד |
 | `HANDOFF_QUIET_MINUTES` | כמה דקות הבוט שותק אחרי העברה לנציג לפני הודעת הרגעה (ברירת מחדל 120) |
 | `HANDOFF_MAX_REASSURANCES_PER_DAY` | מקסימום הודעות הרגעה ללקוח ביום (ברירת מחדל 3) |

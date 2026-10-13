@@ -50,23 +50,54 @@ function describeStatus(order) {
   return 'ההזמנה התקבלה ונמצאת בהכנה למשלוח.';
 }
 
-function createShopifyClient({ store, accessToken, apiVersion = '2026-07', fetchImpl = globalThis.fetch, logger }) {
+function createShopifyClient({ store, accessToken, clientId, clientSecret, apiVersion = '2026-07', fetchImpl = globalThis.fetch, logger, now = () => Date.now() }) {
   const log = logger || { info() {}, warn() {}, error() {} };
   const host = String(store || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   const url = `https://${host}/admin/api/${apiVersion}/graphql.json`;
 
+  // Token: a static SHOPIFY_ACCESS_TOKEN wins. Otherwise use the client credentials grant
+  // (Dev Dashboard apps on the owner's own store) and cache the token until shortly before it expires.
+  let cached = null; // { token, expiresAt }
+  const useGrant = !accessToken && !!(clientId && clientSecret);
+  async function fetchGrantToken() {
+    const res = await fetchImpl(`https://${host}/admin/oauth/access_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, grant_type: 'client_credentials' }),
+    });
+    if (!res.ok) {
+      log.error('shopify_token_error', { status: res.status });
+      throw new Error(`shopify token http ${res.status}`);
+    }
+    const data = await res.json();
+    if (!data || !data.access_token) throw new Error('shopify token missing in response');
+    const ttlSec = Number(data.expires_in) > 0 ? Number(data.expires_in) : 24 * 3600;
+    cached = { token: data.access_token, expiresAt: now() + Math.max(60, ttlSec - 300) * 1000 };
+    log.info('shopify_token_refreshed', { ttlSec });
+    return cached.token;
+  }
+  async function getToken(force = false) {
+    if (accessToken) return accessToken;
+    if (!useGrant) return '';
+    if (!force && cached && now() < cached.expiresAt) return cached.token;
+    return fetchGrantToken();
+  }
+
   async function lookupOrder(orderNumber, phone) {
     const num = normalizeOrderNumber(orderNumber);
     if (!num) return { found: false, error: 'missing order number' };
-    if (!host || !accessToken) return { found: false, error: 'shopify not configured' };
+    if (!host || (!accessToken && !useGrant)) return { found: false, error: 'shopify not configured' };
 
+    const send = async (token) => fetchImpl(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token },
+      body: JSON.stringify({ query: ORDER_QUERY, variables: { q: `name:${num}` } }),
+    });
     let res;
     try {
-      res = await fetchImpl(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': accessToken },
-        body: JSON.stringify({ query: ORDER_QUERY, variables: { q: `name:${num}` } }),
-      });
+      res = await send(await getToken());
+      // An expired grant token -> refresh once and retry
+      if (res.status === 401 && useGrant) res = await send(await getToken(true));
     } catch (err) {
       log.error('shopify_request_error', { error: err?.message });
       throw new Error('shopify unavailable');

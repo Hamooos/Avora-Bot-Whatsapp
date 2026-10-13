@@ -30,6 +30,9 @@ function loadConfig(env = process.env) {
     shopify: {
       store: env.SHOPIFY_STORE || '',
       accessToken: env.SHOPIFY_ACCESS_TOKEN || '',
+      // Dev Dashboard apps (2026+): no permanent token - client credentials grant, refreshed automatically
+      clientId: env.SHOPIFY_CLIENT_ID || '',
+      clientSecret: env.SHOPIFY_CLIENT_SECRET || '',
       apiVersion: env.SHOPIFY_API_VERSION || '2026-07',
     },
     // Live-site sync (CHANGES_v1.1 §1)
@@ -58,7 +61,7 @@ function missingRequired(config) {
   if (!config.ownerNumber) missing.push('OWNER_WHATSAPP_NUMBER');
   if (!config.anthropic.apiKey) missing.push('ANTHROPIC_API_KEY');
   if (!config.shopify.store) missing.push('SHOPIFY_STORE');
-  if (!config.shopify.accessToken) missing.push('SHOPIFY_ACCESS_TOKEN');
+  if (!config.shopify.accessToken && !(config.shopify.clientId && config.shopify.clientSecret)) missing.push('SHOPIFY_ACCESS_TOKEN or SHOPIFY_CLIENT_ID+SHOPIFY_CLIENT_SECRET');
   return missing;
 }
 
