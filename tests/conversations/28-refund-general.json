@@ -1,0 +1,25 @@
+{
+  "id": "28-refund-general",
+  "topic": "שאלה כללית על החזרים (בלי שלבים, בלי הבטחה, בלי העברה)",
+  "source": "expected - written by hand from docs/ and CHANGES_v1.1.md (no ANTHROPIC_API_KEY and no access to avora-il.com when these were created; regenerate live with `npm run conversations:live`)",
+  "site": {
+    "prices": {
+      "1": 189,
+      "2": 315,
+      "3": 439
+    },
+    "policiesLoaded": []
+  },
+  "turns": [
+    {
+      "customer": "יש אצלכם החזרים?",
+      "bot": "יש 30 ימי ניסיון, וההחזרים לפי התנאים במדיניות ההחזרים באתר.",
+      "handoff": null
+    },
+    {
+      "customer": "ומה אם זה לא יעזור לי?",
+      "bot": "זה בדיוק בשביל זה - יש 30 ימי ניסיון, וההחזרים לפי התנאים במדיניות ההחזרים באתר.\nואצל כל אחד זה שונה, אז שווה לתת לזה שבוע-שבועיים של שימוש יומי.",
+      "handoff": null
+    }
+  ]
+}

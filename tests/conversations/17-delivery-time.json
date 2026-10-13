@@ -1,12 +1,25 @@
 {
   "id": "17-delivery-time",
-  "topic": "זמן משלוח (לא ידוע - העברה לנציג)",
-  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "topic": "זמן משלוח (ברירת מחדל, ואז התחייבות)",
+  "source": "expected - written by hand from docs/ and CHANGES_v1.1.md (no ANTHROPIC_API_KEY and no access to avora-il.com when these were created; regenerate live with `npm run conversations:live`)",
+  "site": {
+    "prices": {
+      "1": 189,
+      "2": 315,
+      "3": 439
+    },
+    "policiesLoaded": []
+  },
   "turns": [
     {
       "customer": "תוך כמה זמן זה מגיע אחרי שמזמינים?",
-      "bot": "שאלה טובה - את זמני המשלוח המדויקים אבדוק ואחזור אליך בהקדם 🙏",
-      "handoff": "unknown_info"
+      "bot": "בדרך כלל לוקח שבוע עד שבועיים, והמשלוח חינם לכל הארץ 📦",
+      "handoff": null
+    },
+    {
+      "customer": "אתם מתחייבים לזה?",
+      "bot": "אנחנו מתחייבים לאספקה עד חודש.",
+      "handoff": null
     }
   ]
 }

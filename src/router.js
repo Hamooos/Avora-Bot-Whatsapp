@@ -3,6 +3,8 @@
 const { normalizePhone, samePhone } = require('./phone');
 const { checkReply } = require('./compliance');
 const { CATEGORY_LABELS } = require('./handoff');
+const { decide, newHandoffState } = require('./handoffState');
+const { emptySnapshot } = require('./siteSync');
 
 const NON_TEXT_REPLY = 'תודה! כרגע אפשר לענות כאן רק על הודעות כתובות - אפשר לכתוב לנו במילים במה מדובר?';
 const IGNORED_TYPES = new Set(['reaction', 'system', 'ephemeral', 'request_welcome']);
@@ -35,10 +37,12 @@ const DETECTORS = [
   },
   {
     category: 'cancel_refund',
-    note: 'הלקוח מבקש ביטול / החזרה / החזר. ענו בכנות ובלי לנסות לשכנע אותו לוותר: יש 30 ימי ניסיון ומקבלים את הכסף בחזרה לפי מדיניות ההחזרים באתר, והצוות יחזור אליו כדי לטפל בזה. קראו ל-handoff_to_human.',
+    note: 'הלקוח רוצה לבטל / להחזיר / לקבל החזר. ענו בכנות ובלי לנסות לשכנע אותו לוותר: הסבירו בקצרה את השלבים הרלוונטיים לפי מדיניות ההחזרים שבבלוק האתר (ממוספר, עד 4 שלבים, בלי קישור, בלי להבטיח החזר ללא תנאים, בלי להסתיר את זכות הביטול של 14 יום), ותגידו שהצוות יחזור אליו. אם המדיניות לא בבלוק האתר - אל תפרטו שלבים. קראו ל-handoff_to_human.',
+    // Only a stated wish to return / cancel. General questions ("יש החזרים?", "מה אם לא יעזור?")
+    // get the general answer and must NOT silence the bot with a hand-off (CHANGES_v1.1 §5-6).
     patterns: [
-      /(?:רוצה|רוצים|ברצוני|מבקש|מבקשת|אפשר|איך|אני|נא)\s+(?:\S+\s+)?(?:לבטל|להחזיר|ביטול|החזר|החזרה|זיכוי)/,
-      /לבטל\s+את\s+(?:ה)?הזמנה|ביטול\s+(?:ה)?הזמנה|להחזיר\s+את\s+(?:ה)?מכשיר|איך\s+מחזירים|תהליך\s+(?:ה)?החזרה|מחזיר(?:ה)?\s+את\s+(?:ה)?מכשיר/,
+      /(?:רוצה|רוצים|ברצוני|מבקש|מבקשת|מבקשים|אני|נא|הייתי\s+רוצה|החלטתי)\s+(?:\S+\s+)?(?:לבטל|להחזיר|ביטול|החזר|החזרה|זיכוי)/,
+      /לבטל\s+את\s+(?:ה)?הזמנה|ביטול\s+(?:ה)?הזמנה|להחזיר\s+את\s+(?:ה)?מכשיר|מחזיר(?:ה|ים)?\s+את\s+(?:ה)?מכשיר|תבטלו/,
     ],
   },
   {
@@ -51,9 +55,22 @@ const DETECTORS = [
   },
 ];
 
-function detect(text) {
+// Questions that need site data which was never loaded (CHANGES_v1.1 §1): hand off.
+const SITE_GAPS = [
+  { part: 'prices', pattern: /כמה\s+(?:זה\s+|הוא\s+)?עולה|מחיר|₪|שקל|ש"ח|הנחה|חיסכון|מבצע|זוג|שני\s+מכשירים|שלושה\s+מכשירים|כמה\s+מכשירים/ },
+  { part: 'shipping', pattern: /נקודת\s+איסוף|איסוף|אקספרס|משלוח\s+מהיר|שליח|מאיפה\s+(?:זה\s+)?(?:נשלח|מגיע|יוצא)|זמן\s+(?:טיפול|הכנה)|דואר/ },
+  { part: 'terms', pattern: /תנאי\s+(?:ה)?שימוש|תקנון/ },
+  { part: 'privacy', pattern: /פרטיות|המידע\s+שלי|מוחקים\s+את/ },
+];
+const SITE_GAP_NOTE = 'המידע הזה לא נטען מהאתר כרגע. ענו רק מה שמופיע במסמכים (אם בכלל), תגידו "אבדוק ואחזור אליך", וקראו ל-handoff_to_human.';
+
+function detect(text, site) {
   const t = String(text || '');
-  return DETECTORS.filter((d) => d.patterns.some((p) => p.test(t))).map((d) => ({ category: d.category, note: d.note }));
+  const found = DETECTORS.filter((d) => d.patterns.some((p) => p.test(t))).map((d) => ({ category: d.category, note: d.note }));
+  if (site && SITE_GAPS.some((g) => !site.loaded[g.part] && g.pattern.test(t))) {
+    found.push({ category: 'unknown_info', note: SITE_GAP_NOTE });
+  }
+  return found;
 }
 
 function createRateLimiter({ limit, windowMs, now = () => Date.now() }) {
@@ -70,13 +87,22 @@ function createRateLimiter({ limit, windowMs, now = () => Date.now() }) {
 
 const OWNER_HELP = [
   'פקודות מנהל:',
-  'SEND 0501234567 טקסט - לשלוח ללקוח (הבוט מושתק ללקוח הזה ל-12 שעות)',
-  'PAUSE 0501234567 / RESUME 0501234567 - להשתיק / להחזיר את הבוט ללקוח',
+  'SEND 0501234567 טקסט - לשלוח ללקוח (סוגר את ההעברה לנציג; הבוט מושתק ללקוח הזה ל-12 שעות)',
+  'PAUSE 0501234567 / RESUME 0501234567 - להשתיק / להחזיר את הבוט ללקוח (RESUME גם סוגר העברה לנציג)',
   'BLOCK 0501234567 / UNBLOCK 0501234567 - לחסום / לבטל חסימה',
 ].join('\n');
 
-function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, logger, now = () => Date.now(), rateLimit }) {
+/**
+ * @param {object} deps
+ * @param {Function} [deps.getSite]                 () => site-sync snapshot
+ * @param {number} [deps.handoffQuietMinutes]       default 120
+ * @param {number} [deps.maxReassurancesPerDay]     default 3
+ * @param {boolean} [deps.couponEnabled]
+ */
+function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, logger, now = () => Date.now(), rateLimit,
+  getSite = emptySnapshot, handoffQuietMinutes = 120, maxReassurancesPerDay = 3, couponEnabled = false }) {
   const log = logger || { info() {}, warn() {}, error() {} };
+  const quietOpts = { quietMs: handoffQuietMinutes * 60 * 1000, maxPerDay: maxReassurancesPerDay };
   const seen = new Map(); // message id -> ts (Meta can deliver the same webhook more than once)
   const blocked = new Set();
   const queues = new Map(); // phone -> promise chain (one message at a time per customer)
@@ -111,13 +137,14 @@ function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, lo
       case 'BLOCK': blocked.add(target); break;
       case 'UNBLOCK': blocked.delete(target); break;
       case 'PAUSE': await store.setMeta(target, { pausedUntil: now() + PAUSE_MS }); break;
-      case 'RESUME': await store.setMeta(target, { pausedUntil: 0 }); break;
+      case 'RESUME': await store.setMeta(target, { pausedUntil: 0, handoff: null }); break;
       case 'SEND': {
         const body = (m[3] || '').trim();
         if (!body) { await send(msg.from, OWNER_HELP); return { action: 'owner_help' }; }
         const res = await send(target, body);
         await store.append(target, [{ role: 'user', content: '[הודעה מהצוות נשלחה ללקוח]' }, { role: 'assistant', content: body }]);
-        await store.setMeta(target, { pausedUntil: now() + PAUSE_MS });
+        // The owner replied: the hand-off is closed (CHANGES_v1.1 §6).
+        await store.setMeta(target, { pausedUntil: now() + PAUSE_MS, handoff: null });
         if (!res.ok) await send(msg.from, 'השליחה נכשלה (ייתכן שעברו 24 שעות מההודעה האחרונה של הלקוח).');
         break;
       }
@@ -132,9 +159,26 @@ function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, lo
     const phone = msg.from;
     const meta = await store.getMeta(phone);
 
+    const forward = async () => {
+      if (ownerNumber) await send(ownerNumber, `💬 +${phone}: ${msg.text || `(הודעה מסוג ${msg.type})`}`);
+    };
+
     if (meta.pausedUntil && meta.pausedUntil > now()) {
       // A human is handling this conversation - forward to the owner, don't answer.
-      if (ownerNumber && msg.text) await send(ownerNumber, `💬 +${phone}: ${msg.text}`);
+      await forward();
+      return { action: 'forwarded_to_owner' };
+    }
+
+    if (meta.handoff) {
+      // Open hand-off and the owner hasn't replied yet: forward, and reassure only after a long quiet.
+      await forward();
+      const d = decide(meta.handoff, now(), quietOpts);
+      await store.setMeta(phone, { handoff: d.state });
+      if (d.action === 'reassure') {
+        await send(phone, d.text);
+        log.info('handoff_reassurance', { phone, category: meta.handoff.category });
+        return { action: 'reassured', reply: d.text };
+      }
       return { action: 'forwarded_to_owner' };
     }
 
@@ -143,7 +187,8 @@ function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, lo
       return { action: 'non_text_reply', reply: NON_TEXT_REPLY };
     }
 
-    const detected = detect(msg.text);
+    const site = getSite();
+    const detected = detect(msg.text, site);
     const result = await agent.respond({ phone, text: msg.text, notes: detected.map((d) => d.note) });
 
     // Collect hand-offs: from the model, from the router, and from "אבדוק ואחזור" replies.
@@ -159,17 +204,20 @@ function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, lo
 
     // Last line of defense - agent output is already checked, but never send a non-compliant reply.
     let reply = result.reply;
-    if (!checkReply(reply).ok) {
+    if (!checkReply(reply, { pricing: site.pricing, couponEnabled }).ok) {
       log.error('reply_blocked_by_compliance', { phone });
       reply = 'תודה על ההודעה 🙏 אבדוק ואחזור אליך בהקדם.';
       if (!handoffs.length) handoffs.push({ category: 'other', summary: 'תשובת הבוט נחסמה בבדיקת תאימות' });
     }
 
     await send(phone, reply);
-    for (const h of handoffs) {
-      // The owner gets the customer's last message with the summary, so they have context.
-      const summary = [h.summary, `ההודעה האחרונה: "${msg.text.slice(0, 300)}"`].filter(Boolean).join('\n');
-      await handoff.notify({ phone, category: h.category, summary, customerName: msg.name });
+    if (handoffs.length) {
+      // One alert per customer message: the most specific category, all the reasons, and the
+      // customer's last message so the owner has context.
+      const main = handoffs.find((h) => h.category !== 'other') || handoffs[0];
+      const summary = [...new Set(handoffs.map((h) => h.summary).filter(Boolean)), `ההודעה האחרונה: "${msg.text.slice(0, 300)}"`].join('\n');
+      await store.setMeta(phone, { handoff: newHandoffState(main, now()) });
+      await handoff.notify({ phone, category: main.category, summary, customerName: msg.name });
     }
     log.info('message_handled', { phone, handoffs: handoffs.map((h) => h.category).join(',') || 'none', fallback: result.fallback });
     return { action: 'replied', reply, handoffs, detected: detected.map((d) => d.category) };

@@ -1,11 +1,19 @@
 {
   "id": "02-bundles",
   "topic": "חבילות / זוג",
-  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "source": "expected - written by hand from docs/ and CHANGES_v1.1.md (no ANTHROPIC_API_KEY and no access to avora-il.com when these were created; regenerate live with `npm run conversations:live`)",
+  "site": {
+    "prices": {
+      "1": 189,
+      "2": 315,
+      "3": 439
+    },
+    "policiesLoaded": []
+  },
   "turns": [
     {
       "customer": "אני רוצה גם לאשתי, יש מחיר לשניים?",
-      "bot": "בטח 🙂 שני מכשירים ב-315 ₪, ומגיע איתם המדריך הדיגיטלי \"מדריך לנשימה חופשית\" במתנה.\nככה לכל אחד יש מכשיר משלו. ואם תרצו שלושה - 439 ₪, השלישי יוצא 61 ₪.",
+      "bot": "בטח 🙂 שני מכשירים ב-315 ₪ - חיסכון של 16%, ומגיע איתם המדריך הדיגיטלי \"מדריך לנשימה חופשית\" במתנה.\nככה לכל אחד יש מכשיר משלו. ואם תרצו שלושה - 439 ₪, חיסכון של 22%.",
       "handoff": null
     },
     {

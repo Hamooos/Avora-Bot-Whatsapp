@@ -1,7 +1,15 @@
 {
   "id": "12-spray-dependency",
   "topic": "תלות בספריי",
-  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "source": "expected - written by hand from docs/ and CHANGES_v1.1.md (no ANTHROPIC_API_KEY and no access to avora-il.com when these were created; regenerate live with `npm run conversations:live`)",
+  "site": {
+    "prices": {
+      "1": 189,
+      "2": 315,
+      "3": 439
+    },
+    "policiesLoaded": []
+  },
   "turns": [
     {
       "customer": "אני מכור לאוטריווין כבר 5 שנים. עם המכשיר אוכל להפסיק את הספריי?",

@@ -1,0 +1,42 @@
+{
+  "id": "30-handoff-quiet-then-reassure",
+  "topic": "אחרי העברה לנציג: שקט, ואז הרגעה אחת אחרי המתנה ארוכה",
+  "source": "expected - written by hand from docs/ and CHANGES_v1.1.md (no ANTHROPIC_API_KEY and no access to avora-il.com when these were created; regenerate live with `npm run conversations:live`)",
+  "site": {
+    "prices": {
+      "1": 189,
+      "2": 315,
+      "3": 439
+    },
+    "policiesLoaded": []
+  },
+  "turns": [
+    {
+      "customer": "אני רוצה להחזיר את המכשיר, לא עזר לי",
+      "bot": "מצטערים לשמוע, ואין בעיה 🙏 יש 30 ימי ניסיון, וההחזרים לפי התנאים במדיניות ההחזרים באתר.\nהעברתי את הבקשה לצוות שלנו, והם יחזרו אליך עם כל השלבים.",
+      "handoff": "cancel_refund"
+    },
+    {
+      "customer": "הלו? מתי תחזרו אליי?",
+      "minutesLater": 15,
+      "bot": null,
+      "expect": "forwarded_to_owner",
+      "handoff": null
+    },
+    {
+      "customer": "עדיין מחכה",
+      "minutesLater": 110,
+      "bot": "קיבלנו, הפנייה שלך לגבי ההחזר או הביטול אצל הצוות, ונחזור אליך בהקדם 🙏",
+      "expect": "reassured",
+      "handoff": null
+    },
+    {
+      "customer": "אוקיי",
+      "minutesLater": 5,
+      "bot": null,
+      "expect": "forwarded_to_owner",
+      "handoff": null
+    }
+  ],
+  "clock": "2026-10-13T07:00:00Z (Tuesday 10:00 Israel time; turns with minutesLater advance it)"
+}

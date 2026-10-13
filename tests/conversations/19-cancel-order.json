@@ -1,11 +1,19 @@
 {
   "id": "19-cancel-order",
   "topic": "ביטול הזמנה",
-  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "source": "expected - written by hand from docs/ and CHANGES_v1.1.md (no ANTHROPIC_API_KEY and no access to avora-il.com when these were created; regenerate live with `npm run conversations:live`)",
+  "site": {
+    "prices": {
+      "1": 189,
+      "2": 315,
+      "3": 439
+    },
+    "policiesLoaded": []
+  },
   "turns": [
     {
       "customer": "הזמנתי אתמול ואני רוצה לבטל את ההזמנה",
-      "bot": "אין בעיה 🙏 העברתי את בקשת הביטול לצוות שלנו, והם יחזרו אליך בהקדם כדי לסדר את זה.",
+      "bot": "אין בעיה 🙏 אפשר לבטל, כולל זכות הביטול של 14 יום שמופיעה במדיניות ההחזרים באתר.\nהעברתי את בקשת הביטול לצוות שלנו, והם יחזרו אליך בהקדם עם השלבים.",
       "handoff": "cancel_refund"
     }
   ]

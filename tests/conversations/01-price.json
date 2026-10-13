@@ -1,11 +1,19 @@
 {
   "id": "01-price",
   "topic": "מחיר",
-  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "source": "expected - written by hand from docs/ and CHANGES_v1.1.md (no ANTHROPIC_API_KEY and no access to avora-il.com when these were created; regenerate live with `npm run conversations:live`)",
+  "site": {
+    "prices": {
+      "1": 189,
+      "2": 315,
+      "3": 439
+    },
+    "policiesLoaded": []
+  },
   "turns": [
     {
       "customer": "היי, כמה זה עולה?",
-      "bot": "מכשיר אחד עולה 189 ₪, והמשלוח חינם לכל הארץ.\nיש גם זוג ב-315 ₪ (עם מדריך דיגיטלי במתנה) ושלושה ב-439 ₪.",
+      "bot": "מכשיר אחד עולה 189 ₪, והמשלוח חינם לכל הארץ.\nיש גם 2 מכשירים ב-315 ₪ ו-3 מכשירים ב-439 ₪, ומשני מכשירים ומעלה מקבלים גם מדריך דיגיטלי במתנה.",
       "handoff": null
     }
   ]

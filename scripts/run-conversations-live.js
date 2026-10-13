@@ -3,6 +3,9 @@
 // Runs the sample conversations against the REAL Claude API (no WhatsApp, no Shopify:
 // order lookups return the recorded results). Writes tests/conversations/live/*.json
 // so you can compare the live replies with the expected ones.
+// The live site (SITE_URL) is synced first; if it can't be reached, the docs/ fallback is used.
+// Turns that the router answers by itself (silent forward / reassurance after a hand-off)
+// are skipped - they don't involve the model.
 //
 //   ANTHROPIC_API_KEY=... node scripts/run-conversations-live.js [conversation-id-prefix]
 
@@ -13,6 +16,7 @@ const { loadConfig } = require('../src/config');
 const { AvoraAgent } = require('../src/agent/agent');
 const { InMemoryConversationStore } = require('../src/memory/store');
 const { detect } = require('../src/router');
+const { createSiteSync } = require('../src/siteSync');
 const { checkReply } = require('../src/compliance');
 
 async function main() {
@@ -26,6 +30,9 @@ async function main() {
   const outDir = path.join(dir, 'live');
   fs.mkdirSync(outDir, { recursive: true });
   const client = new Anthropic({ apiKey: config.anthropic.apiKey, maxRetries: 3 });
+  const sync = createSiteSync({ baseUrl: config.site.baseUrl, cacheFile: config.site.cacheFile, intervalMs: 0 });
+  const site = await sync.start();
+  console.log(`Site data: ${Object.entries(site.loaded).map(([k, v]) => `${k}=${v ? 'yes' : 'no'}`).join(' ')}`);
   let failures = 0;
 
   for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.json') && f.startsWith(filter)).sort()) {
@@ -38,13 +45,15 @@ async function main() {
       maxTokens: config.anthropic.maxTokens,
       store: new InMemoryConversationStore(),
       orderLookup: async () => toolResults.shift() || { found: false },
+      getSite: () => site,
+      couponEnabled: config.couponEnabled,
     });
     const turns = [];
     console.log(`\n=== ${conv.id} (${conv.topic})`);
-    for (const turn of conv.turns) {
-      const notes = detect(turn.customer).map((d) => d.note);
+    for (const turn of conv.turns.filter((t) => !t.expect)) {
+      const notes = detect(turn.customer, site).map((d) => d.note);
       const r = await agent.respond({ phone: '972500000000', text: turn.customer, notes });
-      const check = checkReply(r.reply);
+      const check = checkReply(r.reply, { pricing: site.pricing, couponEnabled: config.couponEnabled });
       if (!check.ok || r.fallback) failures++;
       console.log(`לקוח: ${turn.customer}\nבוט:  ${r.reply}\n  handoffs=${r.handoffs.map((h) => h.category).join(',') || '-'} compliant=${check.ok}${r.fallback ? ' FALLBACK' : ''}`);
       turns.push({ customer: turn.customer, bot: r.reply, expected: turn.bot, handoffs: r.handoffs, compliant: check.ok, fallback: r.fallback });

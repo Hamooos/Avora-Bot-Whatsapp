@@ -1,7 +1,15 @@
 {
   "id": "24-results-timeline",
   "topic": "תוך כמה זמן מרגישים",
-  "source": "expected - written by hand from docs/ (no ANTHROPIC_API_KEY was available when these were created; regenerate live with `npm run conversations:live`)",
+  "source": "expected - written by hand from docs/ and CHANGES_v1.1.md (no ANTHROPIC_API_KEY and no access to avora-il.com when these were created; regenerate live with `npm run conversations:live`)",
+  "site": {
+    "prices": {
+      "1": 189,
+      "2": 315,
+      "3": 439
+    },
+    "policiesLoaded": []
+  },
   "turns": [
     {
       "customer": "תוך כמה זמן מרגישים שיפור?",
@@ -10,7 +18,7 @@
     },
     {
       "customer": "זה בטוח יעבוד אצלי?",
-      "bot": "אנחנו לא יכולים להבטיח תוצאה לאף אחד.\nמה שכן: אור אדום באף נבדק במחקרים, הרבה אנשים מרגישים הקלה, ויש 30 יום לבדוק בעצמכם בלי סיכון.",
+      "bot": "אנחנו לא יכולים להבטיח תוצאה לאף אחד.\nמה שכן: אור אדום באף נבדק במחקרים, הרבה אנשים מרגישים הקלה, ויש 30 ימי ניסיון לבדוק בעצמכם.",
       "handoff": null
     }
   ]

@@ -49,4 +49,20 @@ function mockWhatsApp() {
 
 const silentLogger = { info() {}, warn() {}, error() {} };
 
-module.exports = { textResponse, toolResponse, mockAnthropic, scriptedAnthropic, mockWhatsApp, silentLogger };
+// A site-sync snapshot as if the live site had loaded. Default prices are the ones the
+// owner listed in CHANGES_v1.1 (1 = 189, 2 = 315, 3 = 439). Policy texts are only the
+// ones a test passes in - nothing here pretends to be the real site wording.
+function siteSnapshot({ prices = { 1: 189, 2: 315, 3: 439 }, policies = {}, faq = null, loadedPrices = true } = {}) {
+  const { buildPricing, DOCS_FALLBACK_PRICES } = require('../src/pricing');
+  const keys = ['refund', 'shipping', 'terms', 'privacy', 'contact'];
+  return {
+    version: 1,
+    loaded: { prices: loadedPrices, faq: !!faq, ...Object.fromEntries(keys.map((k) => [k, !!policies[k]])) },
+    pricing: buildPricing(loadedPrices ? prices : DOCS_FALLBACK_PRICES, loadedPrices ? 'site' : 'docs'),
+    faq,
+    policies,
+    updatedAt: {},
+  };
+}
+
+module.exports = { textResponse, toolResponse, mockAnthropic, scriptedAnthropic, mockWhatsApp, silentLogger, siteSnapshot };

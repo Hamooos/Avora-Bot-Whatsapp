@@ -7,9 +7,10 @@ const path = require('path');
 const { checkReply, checkContent, sanitizeReply } = require('../src/compliance');
 const { AvoraAgent, FALLBACK_REPLY } = require('../src/agent/agent');
 const { InMemoryConversationStore } = require('../src/memory/store');
-const { scriptedAnthropic, textResponse, toolResponse, silentLogger } = require('./helpers');
+const { scriptedAnthropic, textResponse, toolResponse, silentLogger, siteSnapshot } = require('./helpers');
+const { buildPricing } = require('../src/pricing');
 
-const rules = (text) => checkReply(text).violations.map((v) => v.rule);
+const rules = (text, opts) => checkReply(text, opts).violations.map((v) => v.rule);
 
 test('banned medical wording is flagged', () => {
   for (const t of [
@@ -58,20 +59,82 @@ test('dashes: em-dash and en-dash are flagged, and sanitizeReply fixes them', ()
   assert.deepEqual(rules('שבוע-שבועיים - ויותר'), []);
 });
 
-test('prices: only 189 / 315 / 439 (and 61 for the third device)', () => {
-  assert.deepEqual(rules('מכשיר אחד 189 ₪, זוג 315 ₪, שלושה 439 ₪ - השלישי יוצא 61 ₪.'), []);
+test('prices: only the current 1 / 2 / 3 device prices (default 189 / 315 / 439)', () => {
+  assert.deepEqual(rules('מכשיר אחד 189 ₪, זוג 315 ₪, שלושה 439 ₪.'), []);
   assert.deepEqual(rules('מכשיר אחד 189 ש"ח.'), []);
   assert.ok(rules('מכשיר אחד 199 ₪.').includes('price'));
   assert.ok(rules('רק היום 149 שקלים!').includes('price'));
   assert.ok(rules('במקום 250 ₪ רק 189 ₪').length > 0);
+  // v1.1: no per-device or "third one costs" figures (shekel savings in disguise).
+  assert.ok(rules('השלישי יוצא 61 ₪.').includes('price'));
+  assert.ok(rules('בזוג זה 157.50 ₪ למכשיר.').includes('price'));
 });
 
-test('no discounts, coupons, regular prices or invented deals', () => {
-  for (const t of ['יש 20% הנחה על זוג.', 'קוד קופון AVORA10', 'המחיר הרגיל הוא גבוה יותר', 'יש מבצע השבוע', 'בזוג חוסכים 63 ₪.', 'מחיר רגיל 250']) {
+test('prices are validated against the synced site prices, not a hard-coded list', () => {
+  const pricing = buildPricing({ 1: 199, 2: 330, 3: 459 }, 'site');
+  assert.deepEqual(rules('מכשיר אחד 199 ₪, 2 מכשירים 330 ₪ - חיסכון של 17%.', { pricing }), []);
+  assert.ok(rules('מכשיר אחד 189 ₪.', { pricing }).includes('price'));
+  assert.ok(rules('2 מכשירים 330 ₪ - חיסכון של 16%.', { pricing }).includes('discount'));
+});
+
+test('discounts: allowed only as the computed bundle percentage', () => {
+  for (const t of ['2 מכשירים ב-315 ₪ - חיסכון של 16%.', '3 מכשירים ב-439 ₪, הנחה של 22%.', 'בזוג יש חיסכון של 16%, ובשלושה 22%.']) {
+    assert.deepEqual(rules(t), [], `should allow: ${t}`);
+  }
+  for (const t of [
+    'יש הנחה על זוג.',              // no %
+    'בזוג חוסכים 63 ₪.',            // shekel savings
+    'יש 20% הנחה על זוג.',          // wrong %
+    'עכשיו 50% הנחה על כל האתר!',   // site-wide banner
+    'חיסכון של 16% ועוד 10% בקופון.',
+    'קוד קופון AVORA10',
+    'יש מבצע השבוע',
+    'המחיר הרגיל הוא גבוה יותר',
+    'מחיר רגיל 250',
+    'המחיר המחוק באתר הוא לא רלוונטי',
+  ]) {
     assert.ok(rules(t).length > 0, `should flag: ${t}`);
   }
-  // Research percentages are allowed in a research context.
+  // Research percentages are still allowed in a research context.
   assert.deepEqual(rules('במחקר הישראלי 72% דיווחו על שיפור לעומת 24% בדמה.'), []);
+  // A % that isn't a bundle discount and isn't research is flagged.
+  assert.ok(rules('90% מהאנשים מרגישים שיפור.').includes('discount'));
+});
+
+test('coupon: off by default, allowed in wording only when the owner enables it', () => {
+  assert.ok(rules('בהרשמה לניוזלטר באתר יש קופון.').includes('discount'));
+  assert.deepEqual(rules('בהרשמה לניוזלטר באתר יש קופון.', { couponEnabled: true }), []);
+});
+
+test('refunds: never an unconditional money-back promise', () => {
+  for (const t of [
+    'לא הרגשתם הבדל? מקבלים את הכסף בחזרה.',
+    'נחזיר לך את הכסף.',
+    'תקבלו את הכסף בחזרה, לפי מדיניות ההחזרים באתר.',
+    'יש החזר כספי מלא.',
+    'נסו 30 יום בלי סיכון.',
+    'אין פה סיכון.',
+  ]) {
+    assert.ok(rules(t).includes('refund_promise'), `should flag: ${t}`);
+  }
+  assert.deepEqual(rules('יש 30 ימי ניסיון, וההחזרים לפי התנאים במדיניות ההחזרים באתר.'), []);
+});
+
+test('never a phone number, an email or a link to a policy page', () => {
+  for (const t of ['אפשר להתקשר ל-055-928-9598.', 'כתבו ל-info@avora-il.com', 'הכל כתוב כאן: https://avora-il.com/policies/refund-policy', 'ראו avora-il.com/policies/shipping-policy']) {
+    assert.ok(rules(t).some((r) => r === 'contact_details' || r === 'policy_link'), `should flag: ${t}`);
+  }
+  // Tracking links and order / tracking numbers are fine.
+  assert.deepEqual(rules('מספר מעקב: RR123456789IL\nhttps://example.com/track/RR123456789IL'), []);
+  assert.deepEqual(rules('הזמנה #1042 נשלחה.'), []);
+});
+
+test('format: refund steps may be a short numbered list (max 4 steps)', () => {
+  const steps = 'אפשר, בלי בעיה. בקצרה:\n1. שלב ראשון\n2. שלב שני\n3. שלב שלישי\nהעברתי לצוות, והם יחזרו אליך בהקדם.';
+  assert.deepEqual(rules(steps), []);
+  const five = 'בקצרה:\n1. א\n2. ב\n3. ג\n4. ד\n5. ה';
+  assert.ok(rules(five).includes('too_long'));
+  assert.ok(rules('- אחת\n- שתיים\n- שלוש').includes('bullets'));
 });
 
 test('shipping: never "עד הבית"; free shipping must be "לכל הארץ"', () => {
@@ -108,9 +171,14 @@ test('format: Hebrew only, at most 4 lines, no bullet walls', () => {
 
 test('calibration: the live product-page FAQ wording passes the content rules', () => {
   const faq = fs.readFileSync(path.join(__dirname, '..', 'docs', 'PRODUCT_PAGE_FAQ.md'), 'utf8');
-  // Two sections are intentionally stricter than the site (the bot should rephrase them):
-  // "למי זה פחות מתאים" (a negation list split by commas) and the long legal disclaimer.
-  const STRICTER = new Set(['למי זה פחות מתאים', 'מידע נוסף והצהרת בטיחות']);
+  // Sections that are intentionally stricter than the site (the bot must rephrase them):
+  const STRICTER = new Set([
+    'למי זה פחות מתאים',          // a negation list split by commas ("הקלה מיידית")
+    'מידע נוסף והצהרת בטיחות',    // the long legal disclaimer ("לרפא")
+    'מה אם זה לא יעזור לי?',      // unconditional "מקבלים את הכסף" - v1.1 §5 uses the conditional wording
+    'מה אם לא ארגיש שיפור?',      // same
+    'יש לי עוד שאלה',             // phone number - v1.1 §7 never gives one out
+  ]);
   for (const section of faq.split(/^## /m).slice(1)) {
     const [heading, ...body] = section.split('\n');
     if (STRICTER.has(heading.trim())) continue;
@@ -136,9 +204,10 @@ test('agent: a compliant model reply is returned and saved to memory', async () 
   // Request shape: model from config, cached system prompt with the docs, tools, effort.
   const req = client.calls[0];
   assert.equal(req.model, 'claude-sonnet-5-5');
-  assert.deepEqual(req.system[0].cache_control, { type: 'ephemeral' });
-  assert.match(req.system[0].text, /PRODUCT_PAGE_FAQ\.md/);
-  assert.match(req.system[0].text, /SALES_GUIDE_KNOWLEDGE\.md/);
+  assert.deepEqual(req.system.at(-1).cache_control, { type: 'ephemeral' });
+  assert.match(req.system[1].text, /# אתר - מידע עדכני/);
+  assert.match(req.system[2].text, /PRODUCT_PAGE_FAQ\.md/);
+  assert.match(req.system[2].text, /SALES_GUIDE_KNOWLEDGE\.md/);
   assert.deepEqual(req.tools.map((t) => t.name), ['lookup_order', 'handoff_to_human']);
   assert.deepEqual(req.output_config, { effort: 'low' });
 });
@@ -207,4 +276,16 @@ test('agent: router notes are sent to the model but not stored as the customer t
   await agent.respond({ phone: '1', text: 'יש לי חום', notes: ['זוהה דגל אדום רפואי'] });
   assert.match(client.calls[0].messages.at(-1).content, /\[הערת מערכת\] זוהה דגל אדום רפואי/);
   assert.equal((await store.getHistory('1'))[0].content, 'יש לי חום');
+});
+
+test('agent: uses the synced site prices for the prompt and the compliance check', async () => {
+  const site = siteSnapshot({ prices: { 1: 199, 2: 330, 3: 459 } });
+  const { agent, client } = makeAgent([
+    textResponse('מכשיר אחד עולה 189 ₪.'),          // old price -> rejected
+    textResponse('מכשיר אחד עולה 199 ₪.'),
+  ], { getSite: () => site });
+  const r = await agent.respond({ phone: '1', text: 'כמה זה עולה?' });
+  assert.equal(r.reply, 'מכשיר אחד עולה 199 ₪.');
+  assert.match(client.calls[0].system[1].text, /מכשיר אחד: 199 ₪/);
+  assert.match(client.calls[1].messages.at(-1).content, /189/);
 });

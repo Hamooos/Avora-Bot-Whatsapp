@@ -3,6 +3,7 @@
 const { buildSystemPrompt } = require('./systemPrompt');
 const { TOOL_DEFINITIONS, HANDOFF_CATEGORIES } = require('./tools');
 const { checkReply, sanitizeReply } = require('../compliance');
+const { emptySnapshot } = require('../siteSync');
 
 // Sent when the model fails, refuses, or can't produce a compliant reply.
 const FALLBACK_REPLY = 'תודה על ההודעה 🙏 אבדוק ואחזור אליך בהקדם.';
@@ -18,8 +19,10 @@ class AvoraAgent {
    * @param {object} opts.store        ConversationStore
    * @param {Function} [opts.orderLookup] async (orderNumber, phone) => result
    * @param {object} [opts.logger]
+   * @param {Function} [opts.getSite]  () => site-sync snapshot (live prices, FAQ, policies)
+   * @param {boolean} [opts.couponEnabled]
    */
-  constructor({ client, model, effort = 'low', maxTokens = 2000, store, orderLookup, logger, maxToolRounds = 4, maxRewrites = 1 }) {
+  constructor({ client, model, effort = 'low', maxTokens = 2000, store, orderLookup, logger, maxToolRounds = 4, maxRewrites = 1, getSite = emptySnapshot, couponEnabled = false }) {
     this.client = client;
     this.model = model;
     this.effort = effort;
@@ -29,7 +32,8 @@ class AvoraAgent {
     this.logger = logger || { info() {}, warn() {}, error() {} };
     this.maxToolRounds = maxToolRounds;
     this.maxRewrites = maxRewrites;
-    this.system = buildSystemPrompt();
+    this.getSite = getSite;
+    this.couponEnabled = couponEnabled;
   }
 
   /**
@@ -41,13 +45,17 @@ class AvoraAgent {
     const userContent = [text, ...notes.map((n) => `${SYSTEM_NOTE_PREFIX} ${n}`)].join('\n\n');
     const messages = [...history, { role: 'user', content: userContent }];
     const handoffs = [];
+    // One site snapshot per customer message: the prompt and the compliance check use the same prices.
+    const site = this.getSite();
+    const system = buildSystemPrompt({ site, couponEnabled: this.couponEnabled });
+    const checkOpts = { pricing: site.pricing, couponEnabled: this.couponEnabled };
     let lastViolations = [];
     let rewrites = 0;
     let toolRounds = 0;
 
     try {
       for (;;) {
-        const response = await this.client.messages.create(this.buildRequest(messages));
+        const response = await this.client.messages.create(this.buildRequest(messages, system));
         this.logUsage(phone, response);
 
         if (response.stop_reason === 'refusal') {
@@ -67,7 +75,7 @@ class AvoraAgent {
         const draft = sanitizeReply(
           response.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n')
         );
-        const check = checkReply(draft);
+        const check = checkReply(draft, checkOpts);
         if (draft && check.ok) {
           await this.store.append(phone, [
             { role: 'user', content: text },
@@ -98,11 +106,11 @@ class AvoraAgent {
     return { ...(await this.fallback(phone, text, handoffs, 'הבוט לא הצליח לנסח תשובה תקינה')), violations: lastViolations };
   }
 
-  buildRequest(messages) {
+  buildRequest(messages, system) {
     const req = {
       model: this.model,
       max_tokens: this.maxTokens,
-      system: this.system,
+      system,
       tools: TOOL_DEFINITIONS,
       messages,
     };

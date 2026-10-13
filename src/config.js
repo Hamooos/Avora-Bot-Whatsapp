@@ -3,6 +3,7 @@
 // All secrets come from environment variables only. Never log these values.
 function loadConfig(env = process.env) {
   const bool = (v, dflt = false) => (v === undefined || v === '' ? dflt : /^(1|true|yes)$/i.test(v));
+  const num = (v, dflt) => (v === undefined || v === '' || !Number.isFinite(Number(v)) ? dflt : Number(v));
 
   return {
     port: Number(env.PORT) || 3000,
@@ -31,6 +32,17 @@ function loadConfig(env = process.env) {
       accessToken: env.SHOPIFY_ACCESS_TOKEN || '',
       apiVersion: env.SHOPIFY_API_VERSION || '2026-07',
     },
+    // Live-site sync (CHANGES_v1.1 §1)
+    site: {
+      baseUrl: env.SITE_URL || 'https://avora-il.com',
+      syncHours: num(env.SITE_SYNC_HOURS, 6),
+      cacheFile: env.SITE_CACHE_FILE ?? 'data/site-cache.json',
+    },
+    // After a hand-off (CHANGES_v1.1 §6)
+    handoffQuietMinutes: num(env.HANDOFF_QUIET_MINUTES, 120),
+    maxReassurancesPerDay: num(env.HANDOFF_MAX_REASSURANCES_PER_DAY, 3),
+    // Newsletter coupon may be mentioned only when the owner enables it (CHANGES_v1.1 §2).
+    couponEnabled: bool(env.NEWSLETTER_COUPON_ENABLED, false),
     // Marketing (abandoned cart) is intentionally OFF in v1. See src/marketing/.
     marketingEnabled: false,
   };

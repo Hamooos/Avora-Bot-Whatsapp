@@ -3,14 +3,22 @@
 // Automated enforcement of the brief's hard rules for every outgoing bot reply.
 // The same rules are also written into the system prompt; this module is the
 // safety net that runs on the model's actual output before anything is sent.
+//
+// Prices and discount percentages are validated against the CURRENT pricing
+// (synced from the live site, or the docs/ fallback) - see src/pricing.js.
+
+const { DEFAULT_PRICING, formatPrice } = require('./pricing');
 
 const HEB = '\\u05D0-\\u05EA';
-const ALLOWED_PRICES = [189, 315, 439, 61, 157.5];
 
 const LIMITS = {
   maxLines: 4,
   maxChars: 700,
   maxBulletLines: 2,
+  // Refund / cancellation steps may be a short numbered list (CHANGES_v1.1 §5).
+  maxNumberedLines: 4,
+  maxLinesWithSteps: 6,
+  maxCharsWithSteps: 900,
   minHebrewRatio: 0.5,
 };
 
@@ -96,17 +104,32 @@ const RULES = [
     re: /לקוחות\s+מרוצים|(?:אלפי|מאות|עשרות)\s+(?:לקוחות|אנשים|משתמשים)|\d[\d,]*\s*\+?\s*(?:לקוחות|משתמשים|אנשים\s+כבר)|(?:ביקורות|המלצות)\s+(?:מעולות|מצוינות|חמות|מדהימות)|לקוח(?:ה)?\s+(?:שלנו\s+)?(?:סיפר|סיפרה|כתב|כתבה|אמר|אמרה)/g,
     negatable: true, message: 'No reviews, testimonials or customer counts.' },
 
-  // Pricing / deals
-  { id: 'discount', re: hw('הנחה|הנחות|קופון|קופונים|מבצע|מבצעים|חוסכים|חיסכון|לחסוך'), negatable: true,
-    message: 'No discounts, coupons, deals, savings or "regular price" - quote the bundle prices only.' },
-  { id: 'discount', re: /מחיר\s+(?:ה)?(?:רגיל|מקורי|מלא|קודם)|במקום\s+\d/g, negatable: false,
-    message: 'Never mention a regular / original price.' },
+  // Pricing / deals (bundle discounts are allowed only as the computed % - see discountViolations)
+  { id: 'discount', re: hw('קופון|קופונים|קוד הנחה|מבצע|מבצעים'), negatable: true, unlessOption: 'couponEnabled',
+    message: 'No coupons, sales or invented deals.' },
+  { id: 'discount', re: /מחיר\s+(?:ה)?(?:רגיל|מקורי|מלא|קודם)|במקום\s+\d|(?<![\u05D0-\u05EA])(?:ה)?(?:מחיר|מחירים)\s+(?:ה)?(?:מחוק|מחוקים)/g, negatable: false,
+    message: 'Never mention a regular / original / crossed-out price.' },
+
+  // Refunds (CHANGES_v1.1 §5): the site policy has conditions - never promise money back unconditionally.
+  { id: 'refund_promise',
+    re: /(?:מקבלים|מקבל|מקבלת|תקבלו|תקבל|תקבלי|נחזיר|מחזירים|יחזירו)\s+(?:לך\s+|לכם\s+)?(?:את\s+)?(?:ה)?כסף|כסף\s+בחזרה|החזר\s+(?:כספי\s+)?מלא|(?:בלי|ללא|אין(?:\s+(?:פה|כאן))?)\s+סיכון|אין\s+מה\s+להפסיד/g,
+    negatable: false,
+    message: 'Never promise an unconditional refund. Say: "יש 30 ימי ניסיון, וההחזרים לפי התנאים במדיניות ההחזרים באתר".' },
+
+  // Contact details and policy links are never sent (CHANGES_v1.1 §7).
+  { id: 'contact_details', re: /(?<![\dA-Za-z])(?:\+?972[\s-]?|0)\d{1,2}[\s-]?\d{3}[\s-]?\d{3,4}(?!\d)|[\w.+-]+@[\w-]+\.[A-Za-z]{2,}/g, negatable: false,
+    message: 'Never give out a phone number or email address.' },
+  { id: 'policy_link', re: /\S*\/policies\/\S*|\S*(?:refund-policy|shipping-policy|terms-of-service|privacy-policy)\S*/g, negatable: false,
+    message: 'Never send links to policy pages - just say the policy is on the site.' },
 ];
 
-function findRuleViolations(text) {
+const SAVINGS_WORDS = hw('הנחה|הנחות|חיסכון|חוסכים|חוסך|חוסכת|לחסוך|מוזל|מוזלת|מוזלים');
+
+function findRuleViolations(text, opts = {}) {
   const violations = [];
   for (const rule of RULES) {
     if (rule.unlessReply && rule.unlessReply.test(text)) continue;
+    if (rule.unlessOption && opts[rule.unlessOption]) continue;
     rule.re.lastIndex = 0;
     let m;
     while ((m = rule.re.exec(text)) !== null) {
@@ -118,7 +141,30 @@ function findRuleViolations(text) {
   return violations;
 }
 
-function priceViolations(text) {
+// Discounts only as the computed bundle percentages (CHANGES_v1.1 §2).
+function discountViolations(text, pricing) {
+  const violations = [];
+  const allowed = pricing.allowedPercents;
+  const percents = [...text.matchAll(/(\d+(?:[.,]\d+)?)\s*%/g)].map((m) => Number(m[1].replace(',', '.')));
+  SAVINGS_WORDS.lastIndex = 0;
+  let savings = null;
+  let m;
+  while ((m = SAVINGS_WORDS.exec(text)) !== null) {
+    if (!isNegated(text, m.index)) { savings = m[0]; break; }
+  }
+  const research = /מחקר|סקירה|פלצבו|דמה/.test(text);
+  const list = allowed.join('% / ') + '%';
+  if (savings) {
+    if (!percents.some((p) => allowed.includes(p)) || percents.some((p) => !allowed.includes(p))) {
+      violations.push({ rule: 'discount', match: savings, message: `A discount may be mentioned only as the bundle percentage (${list}), never in shekels or any other %.` });
+    }
+  } else if (percents.some((p) => !allowed.includes(p)) && !research) {
+    violations.push({ rule: 'discount', match: '%', message: `The only % figures allowed are the bundle discounts (${list}) and the research facts.` });
+  }
+  return violations;
+}
+
+function priceViolations(text, pricing) {
   const violations = [];
   const amounts = [];
   const after = /(\d+(?:[.,]\d+)?)\s*(?:₪|ש"ח|ש״ח|שקלים|שקל|NIS|ILS)/g;
@@ -128,12 +174,10 @@ function priceViolations(text) {
   while ((m = before.exec(text)) !== null) amounts.push(m[1]);
   for (const raw of amounts) {
     const n = Number(raw.replace(',', '.'));
-    if (!ALLOWED_PRICES.includes(n)) {
-      violations.push({ rule: 'price', match: raw, message: `Price ${raw} is not one of the official prices (189 / 315 / 439, third device 61).` });
+    if (!pricing.allowedPrices.includes(n)) {
+      const official = pricing.allowedPrices.map(formatPrice).join(' / ');
+      violations.push({ rule: 'price', match: raw, message: `Price ${raw} is not one of the current prices (${official}). No per-device or savings amounts.` });
     }
-  }
-  if (/\d+(?:\.\d+)?\s*%/.test(text) && !/מחקר|סקירה|פלצבו|דמה/.test(text)) {
-    violations.push({ rule: 'discount', match: '%', message: 'No % figures outside the research facts (never a % discount).' });
   }
   if (/660/.test(text) && !/מחקר/.test(text)) {
     violations.push({ rule: 'wavelength', match: '660', message: 'Avora+ is 630-650nm. 660 only when describing the Israeli study.' });
@@ -147,13 +191,19 @@ function priceViolations(text) {
 function formatViolations(text) {
   const violations = [];
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-  if (lines.length > LIMITS.maxLines) {
-    violations.push({ rule: 'too_long', match: `${lines.length} lines`, message: `Keep it to 1-${LIMITS.maxLines} short lines.` });
+  const numbered = lines.filter((l) => /^\d+[.)]\s/.test(l)).length;
+  const maxLines = numbered ? LIMITS.maxLinesWithSteps : LIMITS.maxLines;
+  const maxChars = numbered ? LIMITS.maxCharsWithSteps : LIMITS.maxChars;
+  if (lines.length > maxLines) {
+    violations.push({ rule: 'too_long', match: `${lines.length} lines`, message: `Keep it to 1-${LIMITS.maxLines} short lines (numbered steps: at most ${LIMITS.maxNumberedLines}).` });
   }
-  if (text.length > LIMITS.maxChars) {
-    violations.push({ rule: 'too_long', match: `${text.length} chars`, message: `Keep it under ${LIMITS.maxChars} characters.` });
+  if (numbered > LIMITS.maxNumberedLines) {
+    violations.push({ rule: 'too_long', match: `${numbered} steps`, message: `At most ${LIMITS.maxNumberedLines} numbered steps.` });
   }
-  const bullets = lines.filter((l) => /^(?:[-•*▪]|\d+[.)])\s/.test(l)).length;
+  if (text.length > maxChars) {
+    violations.push({ rule: 'too_long', match: `${text.length} chars`, message: `Keep it under ${maxChars} characters.` });
+  }
+  const bullets = lines.filter((l) => /^[-•*▪]\s/.test(l)).length;
   if (bullets > LIMITS.maxBulletLines) {
     violations.push({ rule: 'bullets', match: `${bullets} bullets`, message: 'No bullet walls.' });
   }
@@ -178,14 +228,19 @@ function sanitizeReply(text) {
     .trim();
 }
 
-// Content rules only (no format rules) - useful for checking long source documents.
-function checkContent(text) {
-  return [...findRuleViolations(text), ...priceViolations(text)];
+/**
+ * Content rules only (no format rules) - useful for checking long source documents.
+ * @param {string} text
+ * @param {{pricing?: object, couponEnabled?: boolean}} [opts]
+ */
+function checkContent(text, opts = {}) {
+  const pricing = opts.pricing || DEFAULT_PRICING;
+  return [...findRuleViolations(text, opts), ...priceViolations(text, pricing), ...discountViolations(text, pricing)];
 }
 
-function checkReply(text) {
-  const violations = [...checkContent(text), ...formatViolations(text)];
+function checkReply(text, opts = {}) {
+  const violations = [...checkContent(text, opts), ...formatViolations(text)];
   return { ok: violations.length === 0, violations };
 }
 
-module.exports = { checkReply, checkContent, sanitizeReply, isNegated, ALLOWED_PRICES, LIMITS };
+module.exports = { checkReply, checkContent, sanitizeReply, isNegated, LIMITS };

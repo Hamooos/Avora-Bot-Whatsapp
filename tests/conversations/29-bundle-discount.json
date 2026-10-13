@@ -1,0 +1,25 @@
+{
+  "id": "29-bundle-discount",
+  "topic": "הנחה על חבילות - רק באחוזים",
+  "source": "expected - written by hand from docs/ and CHANGES_v1.1.md (no ANTHROPIC_API_KEY and no access to avora-il.com when these were created; regenerate live with `npm run conversations:live`)",
+  "site": {
+    "prices": {
+      "1": 189,
+      "2": 315,
+      "3": 439
+    },
+    "policiesLoaded": []
+  },
+  "turns": [
+    {
+      "customer": "יש הנחה אם קונים כמה?",
+      "bot": "כן 🙂 2 מכשירים ב-315 ₪ - חיסכון של 16%, ו-3 מכשירים ב-439 ₪ - חיסכון של 22%.\nומשני מכשירים ומעלה מקבלים גם את המדריך הדיגיטלי \"מדריך לנשימה חופשית\" במתנה.",
+      "handoff": null
+    },
+    {
+      "customer": "כמה זה יוצא בשקלים למכשיר?",
+      "bot": "המחירים הם 315 ₪ ל-2 מכשירים ו-439 ₪ ל-3 מכשירים, המשלוח חינם לכל הארץ.",
+      "handoff": null
+    }
+  ]
+}
