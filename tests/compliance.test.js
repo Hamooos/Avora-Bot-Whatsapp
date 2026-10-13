@@ -162,11 +162,12 @@ test('wavelength: 660 only in the context of the study', () => {
   assert.deepEqual(rules('המחקר הישראלי השתמש ב-660 ננומטר, ואבורה+ הוא 630-650.'), []);
 });
 
-test('format: Hebrew only, at most 4 lines, no bullet walls', () => {
+test('format: Hebrew only, at most 8 short lines (paragraphs), no bullet walls', () => {
   assert.ok(rules('Hi! The price is 189 ₪ and shipping is free.').includes('not_hebrew'));
-  assert.ok(rules('א\nב\nג\nד\nה').includes('too_long'));
+  assert.ok(!rules('א\n\nב\nג\n\nד').includes('too_long')); // 2-3 short paragraphs are fine
+  assert.ok(rules('א\nב\nג\nד\nה\nו\nז\nח\nט').includes('too_long'));
   assert.ok(rules('- אחת\n- שתיים\n- שלוש').includes('bullets'));
-  assert.ok(rules('א'.repeat(800)).includes('too_long'));
+  assert.ok(rules('א'.repeat(1000)).includes('too_long'));
 });
 
 test('calibration: the live product-page FAQ wording passes the content rules', () => {
@@ -288,4 +289,11 @@ test('agent: uses the synced site prices for the prompt and the compliance check
   assert.equal(r.reply, 'מכשיר אחד עולה 199 ₪.');
   assert.match(client.calls[0].system[1].text, /מכשיר אחד: 199 ₪/);
   assert.match(client.calls[1].messages.at(-1).content, /189/);
+});
+
+test('negated stop-wording is allowed ("אסור להפסיק את ה-CPAP"), a real instruction is not', () => {
+  for (const ok of ['אסור להפסיק את ה-CPAP בלי הרופא.', 'חשוב מאוד שלא להפסיק את ה-CPAP.', 'אין להפסיק את השימוש ב-CPAP.']) {
+    assert.ok(!rules(ok).includes('stop_medication'), ok);
+  }
+  assert.ok(rules('אפשר להפסיק את ה-CPAP אחרי שבוע.').includes('stop_medication'));
 });

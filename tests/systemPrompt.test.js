@@ -50,3 +50,19 @@ test('§7: never a phone number or a link to a policy page', () => {
 test('the rules block is identical whatever the site says (prompt-cache friendly)', () => {
   assert.equal(buildSystemPrompt()[0].text, RULES);
 });
+
+test('persona: מעיין, feminine first person, introduces herself once, honest about being a bot', () => {
+  assert.match(RULES, /You are מעיין \(Maayan\)/);
+  assert.match(RULES, /FEMININE first person/);
+  assert.match(RULES, /Introduce yourself once/);
+  assert.match(RULES, /Never claim to be a human/);
+});
+
+test('format: paragraphs separated by an empty line, 1-3 emojis, warm acknowledgement first', () => {
+  assert.match(RULES, /separated by an EMPTY LINE/);
+  assert.match(RULES, /Emojis: 1-3 per message/);
+  assert.match(RULES, /Start by acknowledging what the customer feels/);
+  // The style example itself passes the compliance check.
+  const example = RULES.split('מעיין: "')[1].split('"\n(Never')[0];
+  assert.ok(checkReply(example).ok, JSON.stringify(checkReply(example)));
+});

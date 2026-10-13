@@ -12,19 +12,19 @@ const { DEFAULT_PRICING, formatPrice } = require('./pricing');
 const HEB = '\\u05D0-\\u05EA';
 
 const LIMITS = {
-  maxLines: 4,
-  maxChars: 700,
+  maxLines: 8,
+  maxChars: 950,
   maxBulletLines: 2,
   // Refund / cancellation steps may be a short numbered list (CHANGES_v1.1 §5).
   maxNumberedLines: 4,
-  maxLinesWithSteps: 6,
+  maxLinesWithSteps: 9,
   maxCharsWithSteps: 900,
   minHebrewRatio: 0.5,
 };
 
 // Words that negate a banned term when they appear shortly before it in the same clause
 // ("אבורה+ אינו טיפול בדום נשימה", "לא מחליף את ה-CPAP").
-const NEGATIONS = new Set(['לא', 'אי', 'אינו', 'אינה', 'אינם', 'אינן', 'אין', 'אל', 'בלי', 'שום', 'ללא']);
+const NEGATIONS = new Set(['לא', 'אי', 'אינו', 'אינה', 'אינם', 'אינן', 'אין', 'אל', 'בלי', 'שום', 'ללא', 'אסור', 'אסורה', 'אף', 'מבלי']);
 const NEGATION_WINDOW_WORDS = 4;
 
 function isNegated(text, index) {

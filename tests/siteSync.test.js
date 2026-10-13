@@ -165,7 +165,7 @@ test('system prompt order: rules, then "אתר - מידע עדכני", then docs
   const snap = await sync.refresh();
   const blocks = buildSystemPrompt({ site: snap });
   assert.equal(blocks.length, 3);
-  assert.match(blocks[0].text, /^You are the WhatsApp customer-service assistant/);
+  assert.match(blocks[0].text, /^You are מעיין \(Maayan\), the customer-service persona of Avora/);
   assert.match(blocks[1].text, /^# אתר - מידע עדכני/);
   assert.match(blocks[1].text, /2 מכשירים: 315 ₪ \(חיסכון של 16%\)/);
   assert.match(blocks[1].text, /3 מכשירים: 439 ₪ \(חיסכון של 22%\)/);
