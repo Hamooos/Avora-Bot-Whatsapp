@@ -24,8 +24,8 @@ Implement on the existing v1 code (branch claude/tender-knuth-qf405w), keep all 
 - Only if the customer asks for a commitment or details: "אנחנו מתחייבים לאספקה עד חודש". If they ask further (processing time, express vs regular, tracking, pickup point, where it ships from), answer from the synced shipping policy text.
 
 ## 5. Returns, refunds, cancellation
-- General questions ("יש החזרים?", "מה אם לא יעזור?"): "יש 30 ימי ניסיון, וההחזרים לפי התנאים במדיניות ההחזרים באתר" + the link https://avora-il.com/policies/refund-policy . Do NOT list the steps, and NEVER promise an unconditional "מחזירים את הכסף" - the site policy has conditions.
-- Only when the customer says they WANT to return / get a refund / cancel: explain the relevant steps accurately from the synced refund policy (in short, numbered, max 4 lines, then the link), and hand off to the owner. Never discourage, never hide the legal 14-day cancellation (it is in the policy).
+- General questions ("יש החזרים?", "מה אם לא יעזור?"): "יש 30 ימי ניסיון, וההחזרים לפי התנאים במדיניות ההחזרים באתר". NO link - never send a link to the policy (owner 2026-10-13), just say it. Do NOT list the steps, and NEVER promise an unconditional "מחזירים את הכסף" - the site policy has conditions.
+- Only when the customer says they WANT to return / get a refund / cancel: explain the relevant steps accurately from the synced refund policy (in short, numbered, max 4 lines, no link), and hand off to the owner. Never discourage, never hide the legal 14-day cancellation (it is in the policy).
 - Update every reply, sample conversation and test that currently says or implies an unconditional refund ("לא הרגשתם הבדל, מקבלים את הכסף בחזרה" etc.) to the conditional wording above.
 
 ## 6. Hand-off: quiet, then a reassurance only after a long wait
@@ -37,4 +37,4 @@ Implement on the existing v1 code (branch claude/tender-knuth-qf405w), keep all 
 - Any owner reply (SEND) or RESUME clears the hand-off state. Add env vars to .env.example and README.
 
 ## 7. Known issues to report back (do not "fix" the site - list them in BUILD_NOTES for the owner)
-- The refund policy page shows the WhatsApp number as 055-5928-9598 (11 digits) twice; the site footer shows 055-928-9598. The bot must never give out a phone number anyway.
+- The bot must never give out a phone number or send links to policy pages.
