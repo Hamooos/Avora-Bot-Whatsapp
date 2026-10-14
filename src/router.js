@@ -164,7 +164,10 @@ function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, lo
       return { action: 'owner_help' };
     }
     const cmd = m[1].toUpperCase();
-    const target = normalizePhone(m[2] || '');
+    // SEND needs a strict number (the message text follows it). For the other commands the whole rest
+    // of the line is the number, so spaces / dashes / brackets as WhatsApp shows them are fine ("+86 136 1665 0282").
+    const rawTarget = cmd === 'SEND' ? (m[2] || '') : `${m[2] || ''}${m[3] || ''}`.replace(/[^\d+]/g, '');
+    const target = normalizePhone(rawTarget);
     if (!target) {
       await send(msg.from, OWNER_HELP);
       return { action: 'owner_help' };

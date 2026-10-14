@@ -91,3 +91,12 @@ test('group messages are never answered (owner 2026-10-14)', async () => {
     messages: [{ id: 'p1', from: '972521234567', type: 'text', text: { body: 'היי' } }] } }] }] });
   assert.equal(one.groupId, null);
 });
+
+test('commands accept numbers with spaces as WhatsApp shows them', async () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ign-')), 'ignore.json');
+  const a = setupWithFile(file);
+  await a.handler.handle({ id: 's1', from: '972500000001', type: 'text', text: 'IGNORE +86 136 1665 0282' });
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), ['8613616650282']);
+  const r = await a.handler.handle({ id: 's2', from: '8613616650282', type: 'text', text: 'hello' });
+  assert.equal(r.action, 'ignored_number');
+});

@@ -21,7 +21,7 @@ function createApp({ verifyToken, appSecret, handler, logger }) {
     verify: (req, _res, buf) => { req.rawBody = buf; },
   }));
 
-  app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+  app.get('/health', (_req, res) => res.json({ status: 'ok', version: (process.env.RAILWAY_GIT_COMMIT_SHA || 'local').slice(0, 7) }));
 
   app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
