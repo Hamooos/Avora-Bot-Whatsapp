@@ -36,3 +36,40 @@ test('other numbers are answered as usual', async () => {
   const r = await handler.handle({ id: 'm2', from: '972531112222', type: 'text', text: 'כמה זה עולה?' });
   assert.notEqual(r.action, 'ignored_number');
 });
+
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+function setupWithFile(file, ignoreNumbers = []) {
+  const sent = [];
+  const handler = createMessageHandler({
+    agent: { reply: async () => ({ text: 'היי! כאן מעיין 😊', handoff: null }) },
+    whatsapp: { sendText: async (to, text) => { sent.push({ to, text }); return { ok: true }; }, markRead: async () => {} },
+    handoff: { notify: async () => {} },
+    store: new InMemoryConversationStore(),
+    ownerNumber: '972500000001',
+    ignoreNumbers,
+    ignoreFile: file,
+  });
+  return { handler, sent };
+}
+
+test('IGNORE from the owner saves the number, it survives a restart, UNIGNORE removes it, IGNORED lists', async () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ign-')), 'sub', 'ignore.json');
+  const a = setupWithFile(file);
+  await a.handler.handle({ id: 'o1', from: '972500000001', type: 'text', text: 'IGNORE 052-1234567' });
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), ['972521234567']);
+
+  // "Restart": a new handler loads the file.
+  const b = setupWithFile(file);
+  const r = await b.handler.handle({ id: 'c1', from: '972521234567', type: 'text', text: 'מה נשמע' });
+  assert.equal(r.action, 'ignored_number');
+  await b.handler.handle({ id: 'o2', from: '972500000001', type: 'text', text: 'IGNORED' });
+  assert.match(b.sent.at(-1).text, /\+972521234567/);
+
+  await b.handler.handle({ id: 'o3', from: '972500000001', type: 'text', text: 'UNIGNORE 0521234567' });
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), []);
+  const r2 = await b.handler.handle({ id: 'c2', from: '972521234567', type: 'text', text: 'כמה זה עולה?' });
+  assert.notEqual(r2.action, 'ignored_number');
+});

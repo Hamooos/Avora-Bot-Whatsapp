@@ -49,6 +49,8 @@ function loadConfig(env = process.env) {
     // Numbers the bot never answers (family, friends, suppliers). Comma-separated, any phone format.
     // Their messages are only forwarded to the owner. Owner request 2026-10-14.
     ignoreNumbers: String(env.BOT_IGNORE_NUMBERS || '').split(/[,;\s]+/).filter(Boolean),
+    // Numbers added from the owner's phone with IGNORE are saved here (Railway Volume mounted at /app/data).
+    ignoreFile: env.IGNORE_FILE ?? 'data/ignore-numbers.json',
     // Marketing (abandoned cart) is intentionally OFF in v1. See src/marketing/.
     marketingEnabled: false,
   };

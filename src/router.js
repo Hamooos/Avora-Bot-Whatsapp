@@ -1,6 +1,19 @@
 'use strict';
 
 const { normalizePhone, samePhone } = require('./phone');
+const fs = require('fs');
+const path = require('path');
+
+function loadIgnoreFile(file, log) {
+  if (!file) return [];
+  try {
+    const arr = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return Array.isArray(arr) ? arr.map((n) => normalizePhone(String(n))).filter(Boolean) : [];
+  } catch (err) {
+    if (err.code !== 'ENOENT') log.warn('ignore_file_read_error', { error: err.message });
+    return [];
+  }
+}
 const { checkReply } = require('./compliance');
 const { CATEGORY_LABELS } = require('./handoff');
 const { decide, newHandoffState } = require('./handoffState');
@@ -90,6 +103,8 @@ const OWNER_HELP = [
   'SEND 0501234567 טקסט - לשלוח ללקוח (סוגר את ההעברה לנציג; הבוט מושתק ללקוח הזה ל-12 שעות)',
   'PAUSE 0501234567 / RESUME 0501234567 - להשתיק / להחזיר את הבוט ללקוח (RESUME גם סוגר העברה לנציג)',
   'BLOCK 0501234567 / UNBLOCK 0501234567 - לחסום / לבטל חסימה',
+  'IGNORE 0501234567 / UNIGNORE 0501234567 - להוסיף / להוריד מרשימת "לא לענות" הקבועה (ההודעות שלהם רק מועברות אליך)',
+  'IGNORED - להציג את הרשימה',
 ].join('\n');
 
 /**
@@ -100,12 +115,27 @@ const OWNER_HELP = [
  * @param {boolean} [deps.couponEnabled]
  */
 function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, logger, now = () => Date.now(), rateLimit,
-  getSite = emptySnapshot, handoffQuietMinutes = 120, maxReassurancesPerDay = 3, couponEnabled = false, ignoreNumbers = [] }) {
+  getSite = emptySnapshot, handoffQuietMinutes = 120, maxReassurancesPerDay = 3, couponEnabled = false, ignoreNumbers = [],
+  ignoreFile = '' }) {
   const log = logger || { info() {}, warn() {}, error() {} };
   const quietOpts = { quietMs: handoffQuietMinutes * 60 * 1000, maxPerDay: maxReassurancesPerDay };
   const seen = new Map(); // message id -> ts (Meta can deliver the same webhook more than once)
   const blocked = new Set();
-  const ignored = new Set((ignoreNumbers || []).map((n) => normalizePhone(n)).filter(Boolean));
+  // Permanent "don't answer" list = BOT_IGNORE_NUMBERS (env, fixed) + numbers added with IGNORE (saved to ignoreFile).
+  const envIgnored = new Set((ignoreNumbers || []).map((n) => normalizePhone(n)).filter(Boolean));
+  const savedIgnored = new Set(loadIgnoreFile(ignoreFile, log));
+  const isIgnored = (phone) => envIgnored.has(phone) || savedIgnored.has(phone);
+  function saveIgnored() {
+    if (!ignoreFile) return false;
+    try {
+      fs.mkdirSync(path.dirname(ignoreFile), { recursive: true });
+      fs.writeFileSync(ignoreFile, JSON.stringify([...savedIgnored], null, 1));
+      return true;
+    } catch (err) {
+      log.error('ignore_file_write_error', { error: err?.message });
+      return false;
+    }
+  }
   const queues = new Map(); // phone -> promise chain (one message at a time per customer)
   const allow = rateLimit || createRateLimiter({ limit: 15, windowMs: 10 * 60 * 1000, now });
 
@@ -123,7 +153,12 @@ function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, lo
   }
 
   async function handleOwnerCommand(msg) {
-    const m = /^\s*(BLOCK|UNBLOCK|PAUSE|RESUME|SEND|HELP)\b\s*(\+?\d[\d-]{6,18}\d)?\s*([\s\S]*)$/i.exec(msg.text || '');
+    const m = /^\s*(BLOCK|UNBLOCK|PAUSE|RESUME|SEND|HELP|IGNORED|IGNORE|UNIGNORE)\b\s*(\+?\d[\d-]{6,18}\d)?\s*([\s\S]*)$/i.exec(msg.text || '');
+    if (m && m[1].toUpperCase() === 'IGNORED') {
+      const list = [...new Set([...envIgnored, ...savedIgnored])];
+      await send(msg.from, list.length ? `רשימת "לא לענות" (${list.length}):\n${list.map((n) => `+${n}`).join('\n')}` : 'רשימת "לא לענות" ריקה.');
+      return { action: 'owner_ignored_list' };
+    }
     if (!m || m[1].toUpperCase() === 'HELP') {
       await send(msg.from, OWNER_HELP);
       return { action: 'owner_help' };
@@ -137,6 +172,17 @@ function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, lo
     switch (cmd) {
       case 'BLOCK': blocked.add(target); break;
       case 'UNBLOCK': blocked.delete(target); break;
+      case 'IGNORE': {
+        savedIgnored.add(target);
+        if (!saveIgnored()) await send(msg.from, 'שימו לב: לא הצלחתי לשמור לקובץ, אז המספר יישאר ברשימה רק עד ההפעלה הבאה של הבוט.');
+        break;
+      }
+      case 'UNIGNORE': {
+        savedIgnored.delete(target);
+        saveIgnored();
+        if (envIgnored.has(target)) await send(msg.from, 'המספר הזה מופיע גם במשתנה BOT_IGNORE_NUMBERS בריילווי - כדי להוריד אותו לגמרי צריך למחוק אותו גם משם.');
+        break;
+      }
       case 'PAUSE': await store.setMeta(target, { pausedUntil: now() + PAUSE_MS }); break;
       case 'RESUME': await store.setMeta(target, { pausedUntil: 0, handoff: null }); break;
       case 'SEND': {
@@ -232,7 +278,7 @@ function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, lo
 
     if (ownerNumber && samePhone(msg.from, ownerNumber)) return handleOwnerCommand(msg);
     if (blocked.has(normalizePhone(msg.from))) return { action: 'blocked' };
-    if (ignored.has(normalizePhone(msg.from))) {
+    if (isIgnored(normalizePhone(msg.from))) {
       // Permanent "don't auto-answer" list (BOT_IGNORE_NUMBERS): never reply, only forward to the owner.
       if (ownerNumber) await send(ownerNumber, `💬 +${normalizePhone(msg.from)}: ${msg.text || `(הודעה מסוג ${msg.type})`}`);
       return { action: 'ignored_number' };

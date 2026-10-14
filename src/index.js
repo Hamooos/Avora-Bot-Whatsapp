@@ -56,6 +56,7 @@ async function main() {
     getSite,
     couponEnabled: config.couponEnabled,
     ignoreNumbers: config.ignoreNumbers,
+    ignoreFile: config.ignoreFile,
   });
 
   const handler = createMessageHandler({
