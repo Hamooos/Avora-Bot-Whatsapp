@@ -273,6 +273,11 @@ function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, lo
   async function handle(msg) {
     if (!msg || !msg.from) return { action: 'ignored' };
     if (isDuplicate(msg.id)) return { action: 'duplicate' };
+    // Never answer inside groups - not even the owner's commands (owner 2026-10-14).
+    if (msg.groupId) {
+      log.info('group_message_ignored', { group: msg.groupId });
+      return { action: 'group_ignored' };
+    }
     if (IGNORED_TYPES.has(msg.type)) return { action: 'ignored' };
     log.info('message_received', { phone: msg.from, type: msg.type, text: msg.text });
 

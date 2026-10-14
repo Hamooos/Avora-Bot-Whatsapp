@@ -29,7 +29,10 @@ function extractMessages(body) {
         else if (m.type === 'interactive') {
           text = m.interactive?.button_reply?.title ?? m.interactive?.list_reply?.title ?? null;
         }
-        out.push({ id: m.id, from: m.from, timestamp: m.timestamp, type: m.type, text, name: names.get(m.from) });
+        // Group messages (Groups API / any group context) are flagged so the router never answers them (owner 2026-10-14).
+        const groupId = m.group_id || m.context?.group_id || value.group_id || value.metadata?.group_id || null;
+        const isGroup = Boolean(groupId) || m.recipient_type === 'group' || /@g\.us$/.test(String(m.from || ''));
+        out.push({ id: m.id, from: m.from, timestamp: m.timestamp, type: m.type, text, name: names.get(m.from), groupId: groupId || (isGroup ? 'unknown' : null) });
       }
     }
   }

@@ -73,3 +73,21 @@ test('IGNORE from the owner saves the number, it survives a restart, UNIGNORE re
   const r2 = await b.handler.handle({ id: 'c2', from: '972521234567', type: 'text', text: 'כמה זה עולה?' });
   assert.notEqual(r2.action, 'ignored_number');
 });
+
+const { extractMessages } = require('../src/whatsapp');
+
+test('group messages are never answered (owner 2026-10-14)', async () => {
+  const body = { object: 'whatsapp_business_account', entry: [{ changes: [{ value: {
+    messages: [{ id: 'g1', from: '972521234567', type: 'text', text: { body: 'כמה זה עולה?' }, group_id: '120363000000000000' }],
+  } }] }] };
+  const [msg] = extractMessages(body);
+  assert.ok(msg.groupId);
+  const { handler, sent } = setup([]);
+  const r = await handler.handle(msg);
+  assert.equal(r.action, 'group_ignored');
+  assert.equal(sent.length, 0);
+  // A normal 1:1 message has no groupId.
+  const [one] = extractMessages({ object: 'whatsapp_business_account', entry: [{ changes: [{ value: {
+    messages: [{ id: 'p1', from: '972521234567', type: 'text', text: { body: 'היי' } }] } }] }] });
+  assert.equal(one.groupId, null);
+});
