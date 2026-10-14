@@ -46,6 +46,9 @@ function loadConfig(env = process.env) {
     maxReassurancesPerDay: num(env.HANDOFF_MAX_REASSURANCES_PER_DAY, 3),
     // Newsletter coupon may be mentioned only when the owner enables it (CHANGES_v1.1 §2).
     couponEnabled: bool(env.NEWSLETTER_COUPON_ENABLED, false),
+    // Numbers the bot never answers (family, friends, suppliers). Comma-separated, any phone format.
+    // Their messages are only forwarded to the owner. Owner request 2026-10-14.
+    ignoreNumbers: String(env.BOT_IGNORE_NUMBERS || '').split(/[,;\s]+/).filter(Boolean),
     // Marketing (abandoned cart) is intentionally OFF in v1. See src/marketing/.
     marketingEnabled: false,
   };

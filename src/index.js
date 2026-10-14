@@ -55,6 +55,7 @@ async function main() {
     logger,
     getSite,
     couponEnabled: config.couponEnabled,
+    ignoreNumbers: config.ignoreNumbers,
   });
 
   const handler = createMessageHandler({

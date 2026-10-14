@@ -100,11 +100,12 @@ const OWNER_HELP = [
  * @param {boolean} [deps.couponEnabled]
  */
 function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, logger, now = () => Date.now(), rateLimit,
-  getSite = emptySnapshot, handoffQuietMinutes = 120, maxReassurancesPerDay = 3, couponEnabled = false }) {
+  getSite = emptySnapshot, handoffQuietMinutes = 120, maxReassurancesPerDay = 3, couponEnabled = false, ignoreNumbers = [] }) {
   const log = logger || { info() {}, warn() {}, error() {} };
   const quietOpts = { quietMs: handoffQuietMinutes * 60 * 1000, maxPerDay: maxReassurancesPerDay };
   const seen = new Map(); // message id -> ts (Meta can deliver the same webhook more than once)
   const blocked = new Set();
+  const ignored = new Set((ignoreNumbers || []).map((n) => normalizePhone(n)).filter(Boolean));
   const queues = new Map(); // phone -> promise chain (one message at a time per customer)
   const allow = rateLimit || createRateLimiter({ limit: 15, windowMs: 10 * 60 * 1000, now });
 
@@ -231,6 +232,11 @@ function createMessageHandler({ agent, whatsapp, handoff, store, ownerNumber, lo
 
     if (ownerNumber && samePhone(msg.from, ownerNumber)) return handleOwnerCommand(msg);
     if (blocked.has(normalizePhone(msg.from))) return { action: 'blocked' };
+    if (ignored.has(normalizePhone(msg.from))) {
+      // Permanent "don't auto-answer" list (BOT_IGNORE_NUMBERS): never reply, only forward to the owner.
+      if (ownerNumber) await send(ownerNumber, `💬 +${normalizePhone(msg.from)}: ${msg.text || `(הודעה מסוג ${msg.type})`}`);
+      return { action: 'ignored_number' };
+    }
     if (!allow(msg.from)) {
       log.warn('rate_limited', { phone: msg.from });
       return { action: 'rate_limited' };
